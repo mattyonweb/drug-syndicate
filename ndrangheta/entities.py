@@ -1,5 +1,7 @@
 from typing import *
 
+from ndrangheta.utils import cap
+
 import random
 
 # =========================================================== #
@@ -39,10 +41,21 @@ class Town():
 
         self.name:   str      = Town.NAMES[self.id]
         self.hold = 0.5 + random.random() / 2 if hold is None else hold
-        
+
         Town.TOWNS[self.id] = self
 
         
     @staticmethod
     def get(id: TownID):
         return Town.TOWNS[id]
+
+
+    def change_hold(self, loss_percent: float) -> float:
+        if loss_percent <= 5:
+            self.hold = cap(self.hold * 1.12, 0.5, 1)
+        elif loss_percent <= 10:
+            self.hold = cap(self.hold * random.uniform(0.95, 1.05), 0.5, 1)
+        else:
+            self.hold = cap(self.hold * (0.95 - (loss_percent-10)/100), 0.5, 1)
+
+        return self.hold

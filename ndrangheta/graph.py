@@ -28,7 +28,7 @@ class Environment():
         
         print(f"In node {town.id} lost {100*(1-loss):.2f}%")
         print("\tWas " + ("" if is_hostile else "not ") + "hostile")
-        print(f"\tHold is {town.hold}")
+        print(f"\tHold is {town.hold:.2f}")
         print("")
 
 
@@ -90,10 +90,17 @@ class Environment():
             from_node = town_id
 
         town = Town.get(end)
+        loss = 100 * (amount - current_amount) / amount
+
+        old_hold = town.hold
+        new_hold = town.change_hold(loss)
+        
         print(
             f"Arrived at destination ({town.id}) "
-            f"with {current_amount}, "
-            f"lost {(amount-current_amount):.2f}%"
+            f"with {current_amount:.2f}kg, "
+            f"lost {(amount-current_amount):.2f}kg on the way.\n"
+            f"Hold at {town.id} changed from {old_hold:.2f} to {new_hold:.2f}"
+            f"(difference: {new_hold-old_hold:.2f})" 
         )
         print()
         return current_amount
@@ -232,20 +239,13 @@ class Ask():
     
 # =========================================================== #
 
-env = Environment(g)
-
 g = load_graph("tests/dots/inevitable_family.dot")
 env = Environment(g)
 
 def play():
     p = Player(0)
-
     env = Environment(g)
     narcos = Narcos()
-
-
-    g = load_graph("tests/dots/inevitable_family.dot")
-    env = Environment(g)
 
     while True:
         p.stats()
@@ -263,7 +263,7 @@ def play():
             if s[1] == "buy":
                 amount = int(s[2])
                 price  = narcos.get_price(kgs=amount)
-                print(f"{amount} is {price}.", end=" ")
+                print(f"{amount} is {price}$.", end=" ")
                 if Ask.confirm():
                     narcos.sell_drugs(amount, p)
                 
