@@ -41,7 +41,7 @@ class Town():
         self.family: FamilyID = family_id
 
         self.name:   str      = Town.NAMES[self.id]
-        self.hold_strength = 0.5 + random.random() / 2
+        self.hold = 0.5 + random.random() / 2
         
         Town.TOWNS[self.id] = self
 
@@ -57,48 +57,50 @@ class Environment():
     def __init__(self, graph):
         self.graph = graph
 
-    def move_from(self, start: TownID, end: TownID,
-                  amount: int, path=None):
-
-        random.seed(0)
         
+    def describe_shipment(self, town: Town, loss, my_family: FamilyID):
+        """
+        Just a fancy print function.
+        """
+        town_name, is_hostile = town.name, town.family != my_family
+        
+        print(f"In node {town.id} lost {100*(1-loss):.2f}%")
+        print("\tWas " + ("" if is_hostile else "not ") + "hostile")
+        print(f"\tHold is {town.hold}")
+
+        
+    def move_from(self, start: TownID, end: TownID,
+                  amount: int, path: List[TownID]):
+        """
+        Nota: PATH comprende tutti i nodi TRANNE iniziale e finale.
+        """        
         my_family = Town.get(start).family
-        cumulative_delta = list()
+        current_amount = amount
         
         for town_id in path:
             town = Town.get(town_id)
             
             if town.family != my_family:
-                hold = town.hold_strength
-
-                # Se hold molto alta, molto probabile
-                # perdere il carico
-                if utils.montecarlo(hold):
-                    cumulative_delta.append(0)
-                    break
+                if not utils.montecarlo(town.hold):
+                    # Se hold avversaria molto alta, molto probabile perdere il carico
+                    self.describe_shipment(town, 0, my_family)
+                    return 0
                 else:
-                    cumulative_delta.append(1)
+                    self.describe_shipment(town, 1, my_family)
                     
             else:
-                hold = town.hold_strength
+                hold = town.hold
+                loss = random.uniform((1 + town.hold) / 2, 1)
+                current_amount *= loss
+                self.describe_shipment(town, loss, my_family)
 
-                cumulative_delta.append(
-                    random.uniform((1+hold)/2, 1)
-                )
-
-        final_amount = amount
-        for node, delta in zip(path, cumulative_delta):
-            final_amount = final_amount * delta
-
-            is_hostile_terrain = my_family != Town.get(node).family
-
-            print(f"Node {node} lost {100*(1-delta):.2f}%", end=" ")
-            print("(was " + ("" if is_hostile_terrain else "not ") + "hostile)", end=" ")
-            print(f"(hold is: {Town.get(node).hold_strength:.2f})")
-
-        print(f"Arrived with {final_amount:.2f} (-{amount-final_amount:.2f})")
-
-        return final_amount
+        town = Town.get(end)
+        print(
+            f"Arrived at destination ({town.id}) "
+            f"with {current_amount}, "
+            f"lost {(amount-current_amount):.2f}%"
+        )
+        return current_amount
 
 # =========================================================== #
         
@@ -147,7 +149,7 @@ def play():
 
         if s[0] == "p": #path
             nodes = [int(n) for n in s[1:]]
-            env.move_from(nodes[0], nodes[-1], 100, nodes[1:])
+            env.move_from(nodes[0], nodes[-1], 100, nodes[1:-1])
         
         if s[0] == "q":
             break
