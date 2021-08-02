@@ -37,7 +37,7 @@ class Town():
         
         assert(town_id not in Town.TOWNS)
         
-        self.id:     TownId   = town_id
+        self.id:     TownID   = town_id
         self.family: FamilyID = family_id
 
         self.name:   str      = Town.NAMES[self.id]
@@ -52,6 +52,10 @@ class Town():
 
 # =========================================================== #
 from ndrangheta import utils
+
+class ShipmentError(Exception):
+    pass
+
 
 class Environment():
     def __init__(self, graph):
@@ -68,9 +72,57 @@ class Environment():
         print("\tWas " + ("" if is_hostile else "not ") + "hostile")
         print(f"\tHold is {town.hold}")
 
+
+    def move_single(self, start: TownID, end: TownID, amount: int, my_family: FamilyID) -> float:
+        """
+        Move a package from a city to the other.
+        """
+        if end not in self.graph.adj[start]:
+            raise ShipmentError(f"Node {start} not adjacent to node {end}")
+
+        town = Town.get(start)
+
+        if town.family != my_family:
+            if not utils.montecarlo(town.hold):
+                # Se hold avversaria molto alta, molto probabile perdere il carico
+                self.describe_shipment(town, 0, my_family)
+                return 0
+            
+            self.describe_shipment(town, 1, my_family)
+            return amount
         
-    def move_from(self, start: TownID, end: TownID,
-                  amount: int, path: List[TownID]):
+        loss = random.uniform((1 + town.hold) / 2, 1)
+        self.describe_shipment(town, loss, my_family)
+        
+        return amount * loss
+
+    
+    def move_from_safest(self, start: TownID, end: TownID, amount: int):
+        """
+        Safest = only friendly nodes, when impossible enemy's lowest holded nodes.
+        """
+        start_town = Town.get(start)
+        my_family = start_town.family
+        
+        def node_heuristic(t_id1, t_id2, _):
+            t2 = Town.get(t_id2)
+
+            if t2.family != my_family:
+                v = t2.hold
+            else:
+                v = 1 - t2.hold                
+
+            print(f"{t_id1} - {t_id2}: {v}")
+            return v
+            
+        return nx.dijkstra_path(
+            self.graph,
+            start, end,
+            weight=node_heuristic
+        ) 
+        
+    def move_from_manual(self, start: TownID, end: TownID,
+                  amount: int, path: List[TownID]) -> int:
         """
         Nota: PATH comprende tutti i nodi TRANNE iniziale e finale.
         """        
@@ -78,21 +130,7 @@ class Environment():
         current_amount = amount
         
         for town_id in path:
-            town = Town.get(town_id)
-            
-            if town.family != my_family:
-                if not utils.montecarlo(town.hold):
-                    # Se hold avversaria molto alta, molto probabile perdere il carico
-                    self.describe_shipment(town, 0, my_family)
-                    return 0
-                else:
-                    self.describe_shipment(town, 1, my_family)
-                    
-            else:
-                hold = town.hold
-                loss = random.uniform((1 + town.hold) / 2, 1)
-                current_amount *= loss
-                self.describe_shipment(town, loss, my_family)
+            current_amount = self.move_single(start, end, current_amount, my_family)
 
         town = Town.get(end)
         print(
@@ -149,7 +187,7 @@ def play():
 
         if s[0] == "p": #path
             nodes = [int(n) for n in s[1:]]
-            env.move_from(nodes[0], nodes[-1], 100, nodes[1:-1])
+            env.move_from_manual(nodes[0], nodes[-1], 100, nodes[1:-1])
         
         if s[0] == "q":
             break
