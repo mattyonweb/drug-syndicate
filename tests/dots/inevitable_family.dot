@@ -1,0 +1,20 @@
+graph G {
+
+  0 -- 1 -- 2 -- 3 -- 4 -- 5 -- 8 -- 9 -- 10;
+
+  0 -- 7 -- 6;
+
+  0 [label=A0, family=0, hold=0.6];
+  1 [label=A1, family=0, hold=0.6];
+  2 [label=A2, family=0, hold=0.6];
+  3 [label=A3, family=0, hold=0.6];
+  4 [label=A4, family=0, hold=0.6];
+  5 [label=A5, family=0, hold=0.6];
+  6 [label=A6, family=0, hold=0.6];
+  8 [label=A8, family=0, hold=0.6];
+  9 [label=A9, family=0, hold=0.6];
+  10 [label=A10, family=0, hold=0.6];
+  
+  7 [label=B7, family=1, hold=0.7];
+
+}

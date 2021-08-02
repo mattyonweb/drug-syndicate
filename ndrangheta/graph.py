@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from networkx.drawing.nx_pydot import read_dot
 from networkx.algorithms.shortest_paths.generic import shortest_path
 
+from ndrangheta.config import *
 from ndrangheta.entities import *
 from ndrangheta.utils import montecarlo, show
 
@@ -13,8 +14,6 @@ from typing import *
 # =========================================================== #
 
 class ShipmentError(Exception): pass
-
-# =========================================================== #
 
 class Environment():
     def __init__(self, graph):
@@ -99,7 +98,7 @@ class Environment():
         print()
         return current_amount
 
-    
+
     def safest_path(self, start: TownID, end: TownID):
         """
         Safest = only friendly nodes, when impossible enemy's lowest holded nodes.
@@ -113,7 +112,9 @@ class Environment():
             t2 = Town.get(t_id2)
 
             if t2.family != my_family:
-                v = t2.hold
+                # Safe = evita a tutti i costi, a meno che non sia
+                # inevitabile, un nodo di una famiglia avversaria
+                v = len(Town.TOWNS) * t2.hold
             else:
                 v = 1 - t2.hold                
 
@@ -125,7 +126,7 @@ class Environment():
             weight=node_heuristic
         )
 
-    
+
     def send_shipment_safest(self, 
             start: TownID,
             end: TownID,
@@ -139,24 +140,27 @@ class Environment():
 # =========================================================== #
         
 """ 
-Promemoria.
-
 g.nodes() ==> [townId, ...]
 
 g.nodes()[townId] ==>
   { townId : {family: familyId} }
 """
 
-nodi  = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-archi = [(0, 1), (0, 2), (1, 2), (2, 4), (2, 5), (3, 4), (3, 7), (3, 8), (4, 6), (5, 6)]
-attrs = [{'family': 0}, {'family': 0}, {'family': 0}, {'family': 0},
-         {'family': 1}, {'family': 1}, {'family': 1}, {'family': 1}, {'family': 2}]
-
-
 def load_graph(fpath="ndrangheta/example.dot"):    
     # Leggi grafo da file .dot
-    g = nx.Graph(read_dot("ndrangheta/example.dot"))
-    g = nx.convert_node_labels_to_integers(g)
+    g = nx.Graph(read_dot(fpath))
+
+    def convert_labels_to_int(g):
+        new_g = nx.Graph()
+        for n in g.nodes():
+            new_g.add_node(int(n), **g.nodes()[n])
+        for (x,y) in g.edges():
+            new_g.add_edge(int(x), int(y))
+
+        return new_g
+    
+    # g = nx.convert_node_labels_to_integers(g)
+    g = convert_labels_to_int(g)
 
     def map_nodes(f, g):
         for name in g.nodes():
@@ -193,15 +197,76 @@ g = load_graph()
 
 # =========================================================== #
 
+class DrugError(Exception): pass
+
+class Player():
+    def __init__(self, id):
+        self.id = id
+        self.money = 1_000_000
+        self.drugs = 0
+
+    def stats(self):
+        print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
+        
+
+class Narcos():
+    def get_price(self, kgs=1):
+        return 60_000 * kgs # 60_000$ = 1Kg
+    
+    def sell_drugs(self, kgs: int, player: Player):
+        money_needed = kgs * self.get_price()
+
+        if player.money < money_needed:
+            raise DrugError(f"{money_needed:n}$ needed, but you only have {player.money:n}")
+
+        player.money -= money_needed
+        player.drugs += kgs
+        
+
+class Ask():
+    @staticmethod
+    def confirm():
+        print("Confirm? (y/N)")
+        answer = input("... ")
+        return answer == "y"
+    
+# =========================================================== #
+
+env = Environment(g)
+
+g = load_graph("tests/dots/inevitable_family.dot")
 env = Environment(g)
 
 def play():
+    p = Player(0)
+
+    env = Environment(g)
+    narcos = Narcos()
+
+
+    g = load_graph("tests/dots/inevitable_family.dot")
+    env = Environment(g)
+
     while True:
+        p.stats()
         s = input("λ) ").split(" ")
 
         if s[0] == "show":
             show(env.graph)
 
+        if s[0] == "drug":
+            print(f"Currently sold at {narcos.get_price():n}€ / kg")
+
+            if len(s) == 1:
+                continue
+            
+            if s[1] == "buy":
+                amount = int(s[2])
+                price  = narcos.get_price(kgs=amount)
+                print(f"{amount} is {price}.", end=" ")
+                if Ask.confirm():
+                    narcos.sell_drugs(amount, p)
+                
         if s[0] == "path": #path
             if s[1].isnumeric():
                 nodes = [int(n) for n in s[1:]]
