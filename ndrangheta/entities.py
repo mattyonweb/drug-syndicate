@@ -49,7 +49,15 @@ class Town():
     def get(id: TownID):
         return Town.TOWNS[id]
 
+    
+    @staticmethod
+    def print_cities(family_id=None):
+        for tid in Town.TOWNS:
+            t = Town.get(tid)
+            if family_id is None or t.family == family_id: 
+                print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold}")
 
+                
     def change_hold(self, loss_percent: float) -> float:
         if loss_percent <= 5:
             self.hold = cap(self.hold * 1.12, 0.5, 1)
@@ -59,3 +67,5 @@ class Town():
             self.hold = cap(self.hold * (0.95 - (loss_percent-10)/100), 0.5, 1)
 
         return self.hold
+
+    

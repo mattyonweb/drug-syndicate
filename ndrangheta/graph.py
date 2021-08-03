@@ -19,7 +19,6 @@ class Environment():
     def __init__(self, graph):
         self.graph = graph
 
-        
     def describe_shipment(self, town: Town, loss, my_family: FamilyID):
         """
         Just a fancy print function for shipment movements.
@@ -50,7 +49,7 @@ class Environment():
         if end not in self.graph.adj[start]:
             raise ShipmentError(f"Node {start} not adjacent to node {end}")
 
-        town = Town.get(start)
+        town = Town.get(end)
 
         if town.family != my_family:
             if not montecarlo(town.hold):
@@ -80,7 +79,7 @@ class Environment():
         current_amount = amount
 
         from_node = path[0]
-        for town_id in path[1:]:
+        for town_id in path[1:]: #NB: la prima iter sarà move(start, start)!
             current_amount = self.move_single(from_node, town_id, current_amount, my_family)
 
             if current_amount == 0:
@@ -141,7 +140,7 @@ class Environment():
 
         return self.send_shipment_manual(
             start, end, amount,
-            self.safest_path(start, end)[1:]
+            self.safest_path(start, end)
         )
 
 # =========================================================== #
@@ -161,6 +160,7 @@ def load_graph(fpath="ndrangheta/example.dot"):
         new_g = nx.Graph()
         for n in g.nodes():
             new_g.add_node(int(n), **g.nodes()[n])
+            new_g.add_edge(int(n), int(n))
         for (x,y) in g.edges():
             new_g.add_edge(int(x), int(y))
 
@@ -274,6 +274,11 @@ def play():
                 
             elif s[1] == "safe":
                 env.send_shipment_safest(int(s[2]), int(s[3]), 100)
-                
+
+
+        if s[0] == "list":
+            family_id = int(s[1]) if len(s) == 2 else None
+            Town.print_cities(family_id=family_id)
+            
         if s[0] == "q":
             break
