@@ -16,12 +16,18 @@ class Family():
         
         self.name = name
         self.id = id
-        
+
+        self.money: int = 1_000_000
+        self.drugs: int = 0
+
         Family.FAMILIES[self.id] = self
 
     @staticmethod
     def get(id: FamilyID):
         return Family.FAMILIES[id]
+
+    def stats(self):
+        print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
 
 # =========================================================== #
 
@@ -42,6 +48,8 @@ class Town():
         self.name:   str      = Town.NAMES[self.id]
         self.hold = 0.5 + random.random() / 2 if hold is None else hold
 
+        self.drugs = 0
+        
         Town.TOWNS[self.id] = self
 
         
@@ -51,11 +59,15 @@ class Town():
 
     
     @staticmethod
-    def print_cities(family_id=None):
+    def print_cities(family_id):
         for tid in Town.TOWNS:
             t = Town.get(tid)
-            if family_id is None or t.family == family_id: 
-                print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold}")
+            
+            print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold}", end=" ")
+            if t.family == family_id:
+                print(f"- Drugs: {t.drugs}kg", end=" ")
+
+            print()
 
                 
     def change_hold(self, loss_percent: float) -> float:
@@ -68,4 +80,6 @@ class Town():
 
         return self.hold
 
-    
+
+    def add_drugs(self, amount: int):
+        self.drugs += amount

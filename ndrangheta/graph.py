@@ -38,7 +38,7 @@ class Environment():
             raise ShipmentError("Destination is the same as the source!")
         if t1.family != t2.family:
             raise ShipmentError(f"Destination is a place not owned by family {start}")
-
+        
         return True
 
     
@@ -206,29 +206,31 @@ g = load_graph()
 
 class DrugError(Exception): pass
 
-class Player():
-    def __init__(self, id):
-        self.id = id
-        self.money = 1_000_000
-        self.drugs = 0
+# class Player():
+#     def __init__(self, id):
+#         self.id = id
+#         self.money = 1_000_000
+#         self.drugs = 0
 
-    def stats(self):
-        print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
+#     def stats(self):
+#         print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
         
 
 class Narcos():
     def get_price(self, kgs=1):
         return 60_000 * kgs # 60_000$ = 1Kg
     
-    def sell_drugs(self, kgs: int, player: Player):
+    def sell_drugs(self, kgs: int, family: Family, dest: TownID):
         money_needed = kgs * self.get_price()
 
-        if player.money < money_needed:
-            raise DrugError(f"{money_needed:n}$ needed, but you only have {player.money:n}")
+        if family.money < money_needed:
+            raise DrugError(f"{money_needed:n}$ needed, but you only have {family.money:n}")
 
-        player.money -= money_needed
-        player.drugs += kgs
-        
+        family.money -= money_needed
+        family.drugs += kgs
+
+        Town.get(dest).add_drugs(kgs)
+
 
 class Ask():
     @staticmethod
@@ -236,25 +238,27 @@ class Ask():
         print("Confirm? (y/N)")
         answer = input("... ")
         return answer == "y"
-    
+
+        
 # =========================================================== #
 
 g = load_graph("tests/dots/inevitable_family.dot")
 env = Environment(g)
 
 def play():
-    p = Player(0)
     env = Environment(g)
     narcos = Narcos()
-
+    player_id, player = 0, Family.FAMILIES[0]
+    
     while True:
-        p.stats()
+        player.stats()
+
         s = input("λ) ").split(" ")
 
         if s[0] == "show":
             show(env.graph)
 
-        if s[0] == "drug":
+        if s[0] == "drug" or s[0] == "drugs":
             print(f"Currently sold at {narcos.get_price():n}€ / kg")
 
             if len(s) == 1:
@@ -263,10 +267,16 @@ def play():
             if s[1] == "buy":
                 amount = int(s[2])
                 price  = narcos.get_price(kgs=amount)
-                print(f"{amount} is {price}$.", end=" ")
-                if Ask.confirm():
-                    narcos.sell_drugs(amount, p)
                 
+                print(f"{amount} is {price}$.")
+
+                Town.print_cities(player_id)
+                dest = int(input("Chose a destination city: "))
+                
+                if Ask.confirm():
+                    narcos.sell_drugs(amount, player, dest)
+
+                    
         if s[0] == "path": #path
             if s[1].isnumeric():
                 nodes = [int(n) for n in s[1:]]
@@ -277,8 +287,7 @@ def play():
 
 
         if s[0] == "list":
-            family_id = int(s[1]) if len(s) == 2 else None
-            Town.print_cities(family_id=family_id)
+            Town.print_cities(player_id)
             
         if s[0] == "q":
             break
