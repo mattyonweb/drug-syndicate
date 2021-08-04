@@ -1,0 +1,55 @@
+from typing import *
+import networkx as nx
+import matplotlib.pyplot as plt
+
+from ndrangheta.config import *
+from ndrangheta.entities import *
+from networkx.drawing.nx_pydot import read_dot
+
+def load_graph(fpath="ndrangheta/example.dot"):
+    g = nx.Graph(read_dot(fpath))
+
+    def convert_labels_to_int(g):
+        new_g = nx.Graph()
+        for n in g.nodes():
+            new_g.add_node(int(n), **g.nodes()[n])
+            new_g.add_edge(int(n), int(n))
+        for (x,y) in g.edges():
+            new_g.add_edge(int(x), int(y))
+
+        return new_g
+    
+    g = convert_labels_to_int(g)
+
+    def map_nodes(f, g):
+        for name in g.nodes():
+            d = f(g.nodes()[name])
+            nx.set_node_attributes(g, d)
+
+    def sanitize_dot(node: Dict) -> Dict:
+        node["family"] = int(node["family"])
+        node["pop"]    = int(node.get("pop", 1)) * 1000
+        node["hold"]   = None if "hold" not in node else float(node["hold"])
+
+        return node
+
+    map_nodes(sanitize_dot, g)
+
+    # TODO
+    if Family.FAMILIES != dict() or Town.TOWNS != dict():
+        print("Polluted Family/Towns, resetting")
+        Family.FAMILIES = dict()
+        Town.TOWNS      = dict()
+
+        
+    # Crea istanze Town() / Family()
+    for n in g.nodes():
+        node = g.nodes()[n]
+        
+        family = node["family"] 
+        if family not in Family.FAMILIES:
+            Family(family, str(family))
+
+        Town(n, family, hold=node["hold"], pop=node["pop"])
+
+    return g

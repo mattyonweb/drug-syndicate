@@ -15,6 +15,6 @@ graph G {
   9 [label=A9, family=0, hold=0.6];
   10 [label=A10, family=0, hold=0.6];
   
-  7 [label=B7, family=1, hold=0.7];
+  7 [label=B7, family=1, hold=0.7, pop=99];
 
 }

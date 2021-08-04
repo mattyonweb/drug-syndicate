@@ -180,63 +180,6 @@ class Environment():
         )
 
 # =========================================================== #
-        
-""" 
-g.nodes() ==> [townId, ...]
-
-g.nodes()[townId] ==>
-  { townId : {family: familyId} }
-"""
-
-def load_graph(fpath="ndrangheta/example.dot"):    
-    # Leggi grafo da file .dot
-    g = nx.Graph(read_dot(fpath))
-
-    def convert_labels_to_int(g):
-        new_g = nx.Graph()
-        for n in g.nodes():
-            new_g.add_node(int(n), **g.nodes()[n])
-            new_g.add_edge(int(n), int(n))
-        for (x,y) in g.edges():
-            new_g.add_edge(int(x), int(y))
-
-        return new_g
-    
-    # g = nx.convert_node_labels_to_integers(g)
-    g = convert_labels_to_int(g)
-
-    def map_nodes(f, g):
-        for name in g.nodes():
-            d = f(g.nodes()[name])
-            nx.set_node_attributes(g, d)
-
-    def sanitize_dot(node: Dict) -> Dict:
-        node["family"] = int(node["family"])
-        if "hold" in node:
-            node["hold"] = float(node["hold"])
-            
-        return node
-
-    map_nodes(sanitize_dot, g)
-
-    # TODO
-    if Family.FAMILIES != dict() or Town.TOWNS != dict():
-        print("Polluted Family/Towns, resetting")
-        Family.FAMILIES = dict()
-        Town.TOWNS      = dict()
-
-        
-    # Crea istanze Town() / Family()
-    for n in g.nodes():
-        family = g.nodes()[n]["family"] 
-        if family not in Family.FAMILIES:
-            Family(family, str(family))
-
-        Town(n, family)
-
-    return g
-
-g = load_graph()
 
 # =========================================================== #
 
@@ -267,11 +210,10 @@ class Ask():
 
         
 # =========================================================== #
-
-g = load_graph("tests/dots/inevitable_family.dot")
-env = Environment(g)
+from ndrangheta.read_dot import load_graph
 
 def play():
+    g = load_graph("tests/dots/inevitable_family.dot")
     env = Environment(g)
     narcos = Narcos()
     player_id, player = 0, Family.FAMILIES[0]

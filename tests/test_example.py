@@ -2,6 +2,7 @@ import unittest
 import random
 
 from ndrangheta.graph import *
+from ndrangheta.read_dot import load_graph
 
 class TestSafePathGraph(unittest.TestCase):
     def test_base(self):

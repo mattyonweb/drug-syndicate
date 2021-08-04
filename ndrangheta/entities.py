@@ -37,16 +37,16 @@ class Town():
     NAMES = open("ndrangheta/calabria.txt", "r").readlines()
     TOWNS: Dict[TownID, "Town"] = dict()
     
-    def __init__(self, town_id: TownID, family_id: FamilyID, hold=None):
-        
+    def __init__(self, town_id: TownID, family_id: FamilyID, hold=None, pop=None):        
         assert(town_id not in Town.TOWNS)
         
         self.id:     TownID   = town_id
         self.family: FamilyID = family_id
-
-        self.name:   str      = Town.NAMES[self.id]
-        self.hold = 0.5 + random.random() / 2 if hold is None else hold
-
+        
+        self.name: str   = Town.NAMES[self.id]
+        self.hold: float = random.uniform(0.5, 1) if hold is None else hold
+        self.population  = pop if pop is not None else random.randint(1, 100) * 1000
+        
         self.drugs = 0
         
         Town.TOWNS[self.id] = self

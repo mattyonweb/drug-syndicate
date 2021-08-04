@@ -1,0 +1,14 @@
+* Immediate
+
+** Add drug request from cities
+
+** Add happiness in cities
+Depending on how steadily drugs is delivered, when needed
+
+** Add basic AI
+
+* Future
+
+** Add concrete police
+
+** Add mafia-wars when hold is low
