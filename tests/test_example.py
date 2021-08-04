@@ -3,7 +3,7 @@ import random
 
 from ndrangheta.graph import *
 
-class TestGraph(unittest.TestCase):
+class TestSafePathGraph(unittest.TestCase):
     def test_base(self):
         g = load_graph("tests/dots/simple.dot")
         env = Environment(g)
@@ -56,53 +56,54 @@ class TestGraph(unittest.TestCase):
 
 # =========================================================== #
 
-    def test_shipments(self):
-        random.seed(100)
-        g = load_graph("tests/dots/inevitable_family.dot")
-        env = Environment(g)
-        narcos = Narcos()
-
+class TestSafeShipmentGraph(unittest.TestCase):
+    def setUp(self):
+        self.env = Environment(load_graph("tests/dots/inevitable_family.dot"))
+        self.narcos = Narcos()
+        self.family = Family.get(0)
         
+    def test_01_cant_send_drugs_if_no_drug_in_city(self):       
+        s = Shipment(kgs=5, costed=10_000, destination=1)   
+
         try:
-            s = Shipment(kgs=5, costed=10_000, destination=1)        
-            env.send_shipment_safest(0, 1, s)
+            self.env.send_shipment_safest(0, 1, s)
             self.fail("No drug!")
         except ShipmentError:
             pass
 
-        
-        family = Family.get(0)
-        family.money = 0
+    def test_02_cant_buy_from_narcos_if_not_enough_money(self):
+        self.family.money = 0
         try:
-            narcos.sell_drugs(3, family, dest=0)
+            self.narcos.sell_drugs(3, self.family, dest=0)
             self.fail("Shouldnt have enough money!")
         except DrugError:
             pass
+
+    def test_03_cant_send_more_drug_than_owned(self):
+        s = Shipment(kgs=5, costed=10_000, destination=1)
         
-        family.money = 1_000_000
-        narcos.sell_drugs(3, family, dest=0)
+        self.family.money = 1_000_000
+        self.narcos.sell_drugs(3, self.family, dest=0)
         
         try:
-            env.send_shipment_safest(0, 1, s)
+            self.env.send_shipment_safest(0, 1, s)
             self.fail("You shouldnt have enough drug!")
         except ShipmentError:
             pass
 
+    def test_04_everything_correct_should_send_drug(self):
+        self.family.money = 1_000_000
+        self.narcos.sell_drugs(3, self.family, dest=0)
+        
         s = Shipment(kgs=2.5, costed=10_000, destination=1)
-        env.send_shipment_safest(0, 1, s)
+        self.env.send_shipment_safest(0, 1, s)
         self.assertGreater(Town.get(1).drugs, 0)
         self.assertAlmostEqual(Town.get(0).drugs, 0.5)
 
+        # Sends a second tranche of remmaining drugs
         s = Shipment(kgs=0.5, costed=10_000, destination=1)
-        env.send_shipment_safest(0, 1, s)
+        self.env.send_shipment_safest(0, 1, s)
         self.assertAlmostEqual(Town.get(0).drugs, 0)
-
-        try:
-            s = Shipment(kgs=1, costed=10_000, destination=1)
-            env.send_shipment_safest(0, 1, s)
-            self.fail("Shouldnt have enough drug to send!")
-        except ShipmentError:
-            pass
         
 def asd(lol):
     return lol

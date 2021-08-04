@@ -54,21 +54,23 @@ class Environment():
 
     def is_valid_shipment(self, start: TownID, end: TownID, ship: Shipment=None):
         t1, t2 = Town.get(start), Town.get(end)
+        self.check_is_valid_shipment_geographically(t1, t2)
+        self.check_is_valid_shipment_drug_wise(t1, t2, ship)
 
-        
+        return True
+
+    def check_is_valid_shipment_geographically(self, t1, t2):
         if t1 == t2:
             raise ShipmentError("Destination is the same as the source!")
         if t1.family != t2.family:
-            raise ShipmentError(f"Destination is a place not owned by family {start}")
+            raise ShipmentError(f"Destination is a place not owned by family {t1.family}")
 
-        if ship is not None:
-            if t1.drugs < ship.initial_kgs:
-                raise ShipmentError(f"Wanted to send {ship.initial_kgs}kg, "
-                                    f"but only {t1.drugs} are available in {t1}")
-            if ship.initial_kgs <= 0:
-                raise ShipmentError(f"Zero or below kgs of drugs scheduled ({ship.initial_kgs})")
-        
-        return True
+    def check_is_valid_shipment_drug_wise(self, t1, _, ship):
+        if t1.drugs < ship.initial_kgs:
+            raise ShipmentError(f"Wanted to send {ship.initial_kgs}kg, "
+                                f"but only {t1.drugs} are available in {t1}")
+        if ship.initial_kgs <= 0:
+            raise ShipmentError(f"Zero or below kgs of drugs scheduled ({ship.initial_kgs})")
 
     
     def move_single(self, start: TownID, end: TownID, ship: Shipment, my_family: FamilyID) -> float:
@@ -139,14 +141,14 @@ class Environment():
         return ship.kgs
 
     
-    def safest_path(self, start: TownID, end: TownID):
+    def safest_path(self, start_id: TownID, end_id: TownID):
         """
         Safest = only friendly nodes, when impossible enemy's lowest holded nodes.
         """
-        assert(self.is_valid_shipment(start, end))
+        start, end = Town.get(start_id), Town.get(end_id)
+        self.check_is_valid_shipment_geographically(start, end)
 
-        start_town = Town.get(start)
-        my_family = start_town.family
+        my_family = start.family
         
         def node_heuristic(__, t_id2, _):
             t2 = Town.get(t_id2)
@@ -162,7 +164,7 @@ class Environment():
             
         return nx.dijkstra_path(
             self.graph,
-            start, end,
+            start_id, end_id,
             weight=node_heuristic
         )
 
