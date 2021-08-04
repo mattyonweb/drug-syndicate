@@ -35,10 +35,9 @@ TownID = int
 
 class Town():
     NAMES = open("ndrangheta/calabria.txt", "r").readlines()
-    TOWNS = dict()
+    TOWNS: Dict[TownID, "Town"] = dict()
     
-    def __init__(self, town_id: TownID, family_id: FamilyID,
-                 name=None, hold=None):
+    def __init__(self, town_id: TownID, family_id: FamilyID, hold=None):
         
         assert(town_id not in Town.TOWNS)
         
@@ -81,5 +80,27 @@ class Town():
         return self.hold
 
 
-    def add_drugs(self, amount: int):
+    def variate_drugs(self, amount: int):
+        """
+        Change amount of drugs in a city by a delta.
+        """
         self.drugs += amount
+        
+        assert self.drugs >= 0, (f"Drugs under 0 in city {self.id}; "
+                                 f"was {self.drugs + amount}, removed {amount}")
+
+        
+    def mail_shipment(self, ship: "Shipment"):
+        """
+        Call this on the starting city of a shipment.
+        """
+        self.variate_drugs(- ship.initial_kgs)
+
+        
+    def receive_shipment(self, ship: "Shipment", family_id: FamilyID,
+                         retail_multiplier=1):
+        
+        self.variate_drugs(ship.kgs)
+        family = Family.get(family_id)
+        family.money += ship.costed * retail_multiplier
+        

@@ -7,6 +7,7 @@ class TestGraph(unittest.TestCase):
     def test_base(self):
         g = load_graph("tests/dots/simple.dot")
         env = Environment(g)
+
         
         self.assertEqual(
             env.safest_path(7, 4),
@@ -52,3 +53,56 @@ class TestGraph(unittest.TestCase):
             env.safest_path(0, 6),
             [0,7,6]
         )
+
+# =========================================================== #
+
+    def test_shipments(self):
+        random.seed(100)
+        g = load_graph("tests/dots/inevitable_family.dot")
+        env = Environment(g)
+        narcos = Narcos()
+
+        
+        try:
+            s = Shipment(kgs=5, costed=10_000, destination=1)        
+            env.send_shipment_safest(0, 1, s)
+            self.fail("No drug!")
+        except ShipmentError:
+            pass
+
+        
+        family = Family.get(0)
+        family.money = 0
+        try:
+            narcos.sell_drugs(3, family, dest=0)
+            self.fail("Shouldnt have enough money!")
+        except DrugError:
+            pass
+        
+        family.money = 1_000_000
+        narcos.sell_drugs(3, family, dest=0)
+        
+        try:
+            env.send_shipment_safest(0, 1, s)
+            self.fail("You shouldnt have enough drug!")
+        except ShipmentError:
+            pass
+
+        s = Shipment(kgs=2.5, costed=10_000, destination=1)
+        env.send_shipment_safest(0, 1, s)
+        self.assertGreater(Town.get(1).drugs, 0)
+        self.assertAlmostEqual(Town.get(0).drugs, 0.5)
+
+        s = Shipment(kgs=0.5, costed=10_000, destination=1)
+        env.send_shipment_safest(0, 1, s)
+        self.assertAlmostEqual(Town.get(0).drugs, 0)
+
+        try:
+            s = Shipment(kgs=1, costed=10_000, destination=1)
+            env.send_shipment_safest(0, 1, s)
+            self.fail("Shouldnt have enough drug to send!")
+        except ShipmentError:
+            pass
+        
+def asd(lol):
+    return lol

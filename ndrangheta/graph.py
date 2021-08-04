@@ -15,11 +15,32 @@ from typing import *
 
 class ShipmentError(Exception): pass
 
+class Shipment:
+    def __init__(self, kgs: float, costed: int, destination: TownID):
+        self.kgs = kgs
+        self.initial_kgs = kgs
+        
+        self.costed = costed
+        self.dest = destination
+
+        self.loss_history: List[Tuple[TownID, float]] = list()
+        
+    def loss_absolute(self) -> float:
+        return round(self.initial_kgs - self.kgs, 2)
+
+    def loss_percent(self) -> float:
+        return round(100 * (1 - self.kgs / self.initial_kgs), 2)
+
+    def displace(self, loss_multiplier: float, town: TownID):
+        self.kgs *= loss_multiplier
+        self.loss_history.append((town, loss_multiplier))
+
+
 class Environment():
     def __init__(self, graph):
         self.graph = graph
 
-    def describe_shipment(self, town: Town, loss, my_family: FamilyID):
+    def describe_shipment(self, town: Town, loss: float, my_family: FamilyID):
         """
         Just a fancy print function for shipment movements.
         """
@@ -31,18 +52,26 @@ class Environment():
         print("")
 
 
-    def is_valid_shipment(self, start: TownID, end: TownID):
+    def is_valid_shipment(self, start: TownID, end: TownID, ship: Shipment=None):
         t1, t2 = Town.get(start), Town.get(end)
 
+        
         if t1 == t2:
             raise ShipmentError("Destination is the same as the source!")
         if t1.family != t2.family:
             raise ShipmentError(f"Destination is a place not owned by family {start}")
+
+        if ship is not None:
+            if t1.drugs < ship.initial_kgs:
+                raise ShipmentError(f"Wanted to send {ship.initial_kgs}kg, "
+                                    f"but only {t1.drugs} are available in {t1}")
+            if ship.initial_kgs <= 0:
+                raise ShipmentError(f"Zero or below kgs of drugs scheduled ({ship.initial_kgs})")
         
         return True
 
     
-    def move_single(self, start: TownID, end: TownID, amount: int, my_family: FamilyID) -> float:
+    def move_single(self, start: TownID, end: TownID, ship: Shipment, my_family: FamilyID) -> float:
         """
         Move a package from a city to the other.
         """
@@ -55,56 +84,61 @@ class Environment():
             if not montecarlo(town.hold):
                 # Se hold avversaria molto alta, molto probabile perdere il carico
                 self.describe_shipment(town, 0, my_family)
-                return 0
+                ship.displace(0, town)
+                return False
             
             self.describe_shipment(town, 1, my_family)
-            return amount
+            ship.displace(1, town)
+            return True
         
         loss = random.uniform((1 + town.hold) / 2, 1)
+        ship.displace(loss, town)
         self.describe_shipment(town, loss, my_family)
-        
-        return amount * loss
+        return True
     
         
-    def send_shipment_manual(self, start: TownID, end: TownID,
-                  amount: int, path: List[TownID]) -> int:
+    def send_shipment_manual(self,
+                start: TownID, end: TownID,
+                ship: Shipment, path: List[TownID]) -> int:
         """
         Nota: PATH comprende tutti i nodi TRANNE quello iniziale. Quello finale c'è.
-        """        
+        """
 
-        assert(self.is_valid_shipment(start, end))
-        
-        my_family = Town.get(start).family
-        
-        current_amount = amount
+        assert(self.is_valid_shipment(start, end, ship))
 
+        town = Town.get(start)
+        town.mail_shipment(ship)
+        
+        my_family = town.family
         from_node = path[0]
+        
         for town_id in path[1:]: #NB: la prima iter sarà move(start, start)!
-            current_amount = self.move_single(from_node, town_id, current_amount, my_family)
+            ok = self.move_single(from_node, town_id, ship, my_family)
 
-            if current_amount == 0:
+            if not ok:
                 print(f"Failed to deliver, package captured in {town_id}!")
                 return 0
             
             from_node = town_id
 
         town = Town.get(end)
-        loss = 100 * (amount - current_amount) / amount
-
         old_hold = town.hold
-        new_hold = town.change_hold(loss)
-        
+        new_hold = town.change_hold(ship.loss_percent())
+
+        town.receive_shipment(ship, my_family, retail_multiplier=1.1)  
+            
         print(
             f"Arrived at destination ({town.id}) "
-            f"with {current_amount:.2f}kg, "
-            f"lost {(amount-current_amount):.2f}kg on the way.\n"
+            f"with {ship.kgs:.2f}kg, "
+            f"lost {ship.loss_absolute():.2f}kg on the way.\n"
             f"Hold at {town.id} changed from {old_hold:.2f} to {new_hold:.2f}"
             f"(difference: {new_hold-old_hold:.2f})" 
         )
         print()
-        return current_amount
+        
+        return ship.kgs
 
-
+    
     def safest_path(self, start: TownID, end: TownID):
         """
         Safest = only friendly nodes, when impossible enemy's lowest holded nodes.
@@ -114,7 +148,7 @@ class Environment():
         start_town = Town.get(start)
         my_family = start_town.family
         
-        def node_heuristic(t_id1, t_id2, _):
+        def node_heuristic(__, t_id2, _):
             t2 = Town.get(t_id2)
 
             if t2.family != my_family:
@@ -136,10 +170,10 @@ class Environment():
     def send_shipment_safest(self, 
             start: TownID,
             end: TownID,
-            amount: int):
+            ship: Shipment):
 
         return self.send_shipment_manual(
-            start, end, amount,
+            start, end, ship,
             self.safest_path(start, end)
         )
 
@@ -206,16 +240,6 @@ g = load_graph()
 
 class DrugError(Exception): pass
 
-# class Player():
-#     def __init__(self, id):
-#         self.id = id
-#         self.money = 1_000_000
-#         self.drugs = 0
-
-#     def stats(self):
-#         print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
-        
-
 class Narcos():
     def get_price(self, kgs=1):
         return 60_000 * kgs # 60_000$ = 1Kg
@@ -229,7 +253,7 @@ class Narcos():
         family.money -= money_needed
         family.drugs += kgs
 
-        Town.get(dest).add_drugs(kgs)
+        Town.get(dest).variate_drugs(kgs)
 
 
 class Ask():
@@ -277,13 +301,16 @@ def play():
                     narcos.sell_drugs(amount, player, dest)
 
                     
-        if s[0] == "path": #path
+        if s[0] == "send": #path
             if s[1].isnumeric():
                 nodes = [int(n) for n in s[1:]]
-                env.send_shipment_manual(nodes[0], nodes[-1], 100, nodes[1:-1])
+                env.send_shipment_manual(
+                    nodes[0], nodes[-2], #start, end
+                    Shipment(int(nodes[-1]), None, nodes[-2]), #amount
+                    nodes[1:-2])
                 
             elif s[1] == "safe":
-                env.send_shipment_safest(int(s[2]), int(s[3]), 100)
+                env.send_shipment_safest(int(s[2]), int(s[3]), int(s[4]))
 
 
         if s[0] == "list":
