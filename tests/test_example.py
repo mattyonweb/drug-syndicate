@@ -7,51 +7,51 @@ from ndrangheta.read_dot import load_graph
 class TestSafePathGraph(unittest.TestCase):
     def test_base(self):
         g = load_graph("tests/dots/simple.dot")
-        env = Environment(g)
+        r = Routing(g)
 
         
         self.assertEqual(
-            env.safest_path(7, 4),
+            r.safest_path(7, 4),
             [7,5,3,6,4]
         )
         
         self.assertEqual(
-            env.safest_path(7, 3),
+            r.safest_path(7, 3),
             [7,5,3]
         )
 
         self.assertEqual(
-            env.safest_path(0, 1),
+            r.safest_path(0, 1),
             [0, 1]
         )
                 
         try:
-            env.safest_path(0, 7)
+            r.safest_path(0, 7)
             self.fail("Different families!")
         except ShipmentError:
             pass
 
         try:
-            env.safest_path(0, 0)
+            r.safest_path(0, 0)
             self.fail("Origin = destination!")
         except ShipmentError:
             pass
 
     def test_circle(self):
         g = load_graph("tests/dots/low_trust_path.dot")
-        env = Environment(g)
+        r = Routing(g)
 
         self.assertEqual(
-            env.safest_path(0, 6),
+            r.safest_path(0, 6),
             [0,1,2,3,4,5,6]
         )
 
     def test_inevitable_enemy_family(self):
         g = load_graph("tests/dots/inevitable_family.dot")
-        env = Environment(g)
+        r = Routing(g)
 
         self.assertEqual(
-            env.safest_path(0, 6),
+            r.safest_path(0, 6),
             [0,7,6]
         )
 
@@ -59,7 +59,7 @@ class TestSafePathGraph(unittest.TestCase):
 
 class TestSafeShipmentGraph(unittest.TestCase):
     def setUp(self):
-        self.env = Environment(load_graph("tests/dots/inevitable_family.dot"))
+        self.r = Routing(load_graph("tests/dots/inevitable_family.dot"))
         self.narcos = Narcos()
         self.family = Family.get(0)
         
@@ -67,7 +67,7 @@ class TestSafeShipmentGraph(unittest.TestCase):
         s = Shipment(kgs=5, costed=10_000, destination=1)   
 
         try:
-            self.env.send_shipment_safest(0, 1, s)
+            self.r.send_shipment_safest(0, 1, s)
             self.fail("No drug!")
         except ShipmentError:
             pass
@@ -87,7 +87,7 @@ class TestSafeShipmentGraph(unittest.TestCase):
         self.narcos.sell_drugs(3, self.family, dest=0)
         
         try:
-            self.env.send_shipment_safest(0, 1, s)
+            self.r.send_shipment_safest(0, 1, s)
             self.fail("You shouldnt have enough drug!")
         except ShipmentError:
             pass
@@ -97,13 +97,13 @@ class TestSafeShipmentGraph(unittest.TestCase):
         self.narcos.sell_drugs(3, self.family, dest=0)
         
         s = Shipment(kgs=2.5, costed=10_000, destination=1)
-        self.env.send_shipment_safest(0, 1, s)
+        self.r.send_shipment_safest(0, 1, s)
         self.assertGreater(Town.get(1).drugs, 0)
         self.assertAlmostEqual(Town.get(0).drugs, 0.5)
 
         # Sends a second tranche of remmaining drugs
         s = Shipment(kgs=0.5, costed=10_000, destination=1)
-        self.env.send_shipment_safest(0, 1, s)
+        self.r.send_shipment_safest(0, 1, s)
         self.assertAlmostEqual(Town.get(0).drugs, 0)
         
 def asd(lol):

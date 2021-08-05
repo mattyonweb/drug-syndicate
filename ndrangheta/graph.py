@@ -36,7 +36,7 @@ class Shipment:
         self.loss_history.append((town, loss_multiplier))
 
 
-class Environment():
+class Routing:
     def __init__(self, graph):
         self.graph = graph
 
@@ -172,14 +172,12 @@ class Environment():
     def send_shipment_safest(self, 
             start: TownID,
             end: TownID,
-            ship: Shipment):
+            ship: Shipment) -> int:
 
         return self.send_shipment_manual(
             start, end, ship,
             self.safest_path(start, end)
         )
-
-# =========================================================== #
 
 # =========================================================== #
 
@@ -212,53 +210,95 @@ class Ask():
 # =========================================================== #
 from ndrangheta.read_dot import load_graph
 
+class Simulator:
+    def __init__(self, graph, player_id=0):
+        self.g = graph
+        self.router = Routing(self.g)
+        self.narcos = Narcos()
+        self.player_id, self.player = 0, Family.FAMILIES[0]
+
+        self.turn = 0
+
+    def advance_time(self):
+        for _, town in Town.TOWNS.items():
+            town.advance_turn()
+        
+        for id, family in Family.FAMILIES.items():
+            self.ai_turn(family)
+
+        self.turn += 1
+
+    def ai_turn(self, family: Family):
+        pass
+
+    def buy_from_narcos(self, family_id, kgs, dest: TownID) -> bool:
+        family = Family.get(family_id)
+        return self.narcos.sell_drugs(kgs, family, dest)
+    
+    def ask_drug_price_to_narcos(self, kgs=1):
+        return self.narcos.get_price(kgs)
+
+    def send_shipment(self, id1: TownID, id2: TownID, ship: Shipment,
+                      mode="safe", **kwargs) -> int:
+        if mode == "safe":
+            return self.router.send_shipment_safest(id1, id2, ship)
+        else:
+            return self.router.send_shipment_safest(id1, id2, ship)
+
+# =========================================================== #
+
 def play():
-    g = load_graph("tests/dots/inevitable_family.dot")
-    env = Environment(g)
-    narcos = Narcos()
-    player_id, player = 0, Family.FAMILIES[0]
+    sim = Simulator(load_graph("tests/dots/inevitable_family.dot"))
+    player_id = 0
+    player    = Family.get(player_id)
     
     while True:
-        player.stats()
+        try:
+            player.stats()
 
-        s = input("λ) ").split(" ")
+            s = input("λ) ").split(" ")
 
-        if s[0] == "show":
-            show(env.graph)
+            if s[0] == "show":
+                show(sim.router.graph)
 
-        if s[0] == "drug" or s[0] == "drugs":
-            print(f"Currently sold at {narcos.get_price():n}€ / kg")
+            if s[0] == "drug" and s[1].startswith("p"):
+                print(f"Currently sold at {sim.ask_drug_price_to_narcos():n}€ / kg")
 
-            if len(s) == 1:
-                continue
-            
-            if s[1] == "buy":
-                amount = int(s[2])
-                price  = narcos.get_price(kgs=amount)
-                
-                print(f"{amount} is {price}$.")
+            if s[0] == "buy":
+                amount = int(s[1])
+                price  = sim.ask_drug_price_to_narcos(kgs=amount)
+
+                print(f"{amount} is {price:n}$.")
 
                 Town.print_cities(player_id)
                 dest = int(input("Chose a destination city: "))
-                
+
                 if Ask.confirm():
-                    narcos.sell_drugs(amount, player, dest)
+                    sim.buy_from_narcos(player_id, amount, dest)
 
-                    
-        if s[0] == "send": #path
-            if s[1].isnumeric():
-                nodes = [int(n) for n in s[1:]]
-                env.send_shipment_manual(
-                    nodes[0], nodes[-2], #start, end
-                    Shipment(int(nodes[-1]), None, nodes[-2]), #amount
-                    nodes[1:-2])
+            if s[0] == "send": #path
+                if s[1] == "manual":
+                    nodes = [int(n) for n in s[2:]]
+                    sim.router.send_shipment_manual(
+                        nodes[0], nodes[-2], #start, end
+                        Shipment(int(nodes[-1]), None, nodes[-2]), #amount
+                        nodes[1:-2])
+
+                else: #safe
+                    sim.send_shipment(int(s[1]), int(s[2]), Shipment(int(s[3]), -1, int(s[2])))
+
+
+            if s[0] == "list":
+                Town.print_cities(player_id)
+
+            if s[0] == "q":
+                break
+
+            if s[0] == "t":
+                sim.advance_time()
                 
-            elif s[1] == "safe":
-                env.send_shipment_safest(int(s[2]), int(s[3]), int(s[4]))
-
-
-        if s[0] == "list":
-            Town.print_cities(player_id)
+        except Exception as e:
+            import traceback
             
-        if s[0] == "q":
-            break
+            traceback.print_exc()
+            continue

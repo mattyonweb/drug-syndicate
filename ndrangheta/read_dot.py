@@ -27,9 +27,10 @@ def load_graph(fpath="ndrangheta/example.dot"):
             nx.set_node_attributes(g, d)
 
     def sanitize_dot(node: Dict) -> Dict:
-        node["family"] = int(node["family"])
-        node["pop"]    = int(node.get("pop", 1)) * 1000
+        node["family"] = int(node.get("family", 0))
+        node["pop"]    = None if "pop" not in node else int(node["pop"]) * 1000
         node["hold"]   = None if "hold" not in node else float(node["hold"])
+        node["drugs"]  = float(node.get("drugs", 0))
 
         return node
 
@@ -50,6 +51,6 @@ def load_graph(fpath="ndrangheta/example.dot"):
         if family not in Family.FAMILIES:
             Family(family, str(family))
 
-        Town(n, family, hold=node["hold"], pop=node["pop"])
+        Town(n, family, hold=node["hold"], pop=node["pop"], drugs=node["drugs"])
 
     return g
