@@ -238,7 +238,7 @@ class AI:
     def decide_shipments(self, family_id):
         fam = Family.get(family_id)
 
-        if len(fam.drug_requests) == 0:
+        if family_id == -1 or len(fam.drug_requests) == 0:
             return
 
         # Per ora:
@@ -345,11 +345,12 @@ def play():
             if s[0] == "buy":
                 amount = int(s[1])
                 price  = sim.ask_drug_price_to_narcos(kgs=amount)
+                dest   = player.capital
+                
+                print(f"{amount}kg is {price:n}$ - delivered tomorrow in {dest}")
 
-                print(f"{amount} is {price:n}$.")
-
-                Town.print_cities(player_id, exclude_others=True)
-                dest = int(input("Chose a destination city: "))
+                # Town.print_cities(player_id, exclude_others=True)
+                # dest = int(input("Chose a destination city: "))
 
                 # Scala i soldi, delivera la droga solo il giorno dopo
                 if Ask.confirm():

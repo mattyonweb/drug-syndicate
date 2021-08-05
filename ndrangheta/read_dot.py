@@ -50,7 +50,10 @@ def load_graph(fpath="ndrangheta/example.dot"):
         
         family = node["family"] 
         if family not in Family.FAMILIES:
-            Family(family, str(family))
+            if family == -1:
+                Police(-1, "Police")
+            else:
+                Family(family, str(family))
 
         Town(n, family, hold=node["hold"], pop=node["pop"], drugs=node["drugs"])
         if node["capital"]:

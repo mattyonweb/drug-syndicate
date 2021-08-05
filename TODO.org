@@ -7,7 +7,9 @@
 ** Implementare la bozza di contratti, Family.local_ask_for_drugs() (un metodo observer)
 
 ** Scrivere tests su meccanismi di richiesta di droga da parte di famiglie locali.
-  
+
+** If package is stolen in an hostile node, the node should increase its drugs!
+
 * Immediate
 
 ** Add drug demand from cities

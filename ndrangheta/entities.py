@@ -49,6 +49,12 @@ class Family():
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
 
+        
+class Police(Family):
+    def local_asks_for_drug(self, request: Request):
+        print("SHOULND READ ME")
+
+    
 
 class LocalFamily:
     def __init__(self, parent: Family, town: "Town"):
@@ -134,7 +140,7 @@ class Town():
 
         self.local_family = LocalFamily(Family.get(self.family), self)
         
-        self.drugs = kwargs["drugs"]
+        self.drugs = kwargs["drugs"] if self.family == -1 else 0 
         
         Town.TOWNS[self.id] = self
 
@@ -212,5 +218,8 @@ class Town():
         self.variate_drugs(- self.local_family.sell_daily_doses())
         
     def advance_turn(self):
-        self.consume_drugs_single_day()
-        self.local_family.evaluate_need_for_drug()
+        if self.family == -1:
+            pass # is police town
+        else:
+            self.consume_drugs_single_day()
+            self.local_family.evaluate_need_for_drug()
