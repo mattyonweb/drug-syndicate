@@ -138,9 +138,8 @@ class Town():
             else random.randint(1, 100) * 1000
         )
 
-        self.local_family = LocalFamily(Family.get(self.family), self)
-        
-        self.drugs = kwargs["drugs"] if self.family == -1 else 0 
+        self.local_family = LocalFamily(Family.get(self.family), self)        
+        self.drugs = kwargs["drugs"] if self.family != -1 else 0 
         
         Town.TOWNS[self.id] = self
 
@@ -209,7 +208,10 @@ class Town():
         # TODO: qui ci sarà da verificare contratti e simili
         # family = Family.get(family_id)
         # family.money += ship.costed * retail_multiplier
-        
+
+    def capture_shipment(self, ship: "Shipment"):
+        self.variate_drugs(ship.kgs)
+        # TODO: ci starebbe tipo che aumenta (o diminuisce?) la hold?
 
     # =========================================================== #
     

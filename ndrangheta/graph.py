@@ -90,7 +90,7 @@ class Routing:
             if not montecarlo(town.hold):
                 # Se hold avversaria molto alta, molto probabile perdere il carico
                 self.describe_shipment(town, 0, my_family)
-                ship.displace(0, town)
+                # ship.displace(0, town)
                 return False
             
             self.describe_shipment(town, 1, my_family)
@@ -122,7 +122,8 @@ class Routing:
             ok = self.move_single(from_node, town_id, ship, my_family)
 
             if not ok:
-                print(f"Failed to deliver, package captured in {town_id}!")
+                print(f"Failed to deliver, package captured in {town_id}! Lost {ship.kgs}!")
+                Town.get(town_id).capture_shipment(ship)
                 return 0
             
             from_node = town_id
