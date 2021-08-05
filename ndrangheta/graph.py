@@ -1,4 +1,5 @@
 import random
+import logging
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -59,12 +60,14 @@ class Routing:
 
         return True
 
+    
     def check_is_valid_shipment_geographically(self, t1, t2):
-        if t1 == t2:
-            raise ShipmentError("Destination is the same as the source!")
+        # if t1 == t2:
+        #     raise ShipmentError("Destination is the same as the source!")
         if t1.family != t2.family:
             raise ShipmentError(f"Destination is a place not owned by family {t1.family}")
 
+        
     def check_is_valid_shipment_drug_wise(self, t1, _, ship):
         if t1.drugs < ship.initial_kgs:
             raise ShipmentError(f"Wanted to send {ship.initial_kgs}kg, "
@@ -77,6 +80,7 @@ class Routing:
         """
         Move a package from a city to the other.
         """
+        
         if end not in self.graph.adj[start]:
             raise ShipmentError(f"Node {start} not adjacent to node {end}")
 
@@ -187,28 +191,42 @@ class Narcos():
     def get_price(self, kgs=1):
         return 60_000 * kgs # 60_000$ = 1Kg
     
-    def sell_drugs(self, kgs: int, family: Family, dest: TownID):
+    def sell_drugs(self, kgs: int, family: Family, dest: TownID) -> Tuple[Callable, Any]:
+        """
+        Buying drugs from narcos is a 2-step operation.
+        
+        Firstly, narcos gets all the money (sell_drugs()); then, at the next turn,
+        the family will be delivered the drugs (deliver_drugs()).
+        """
         money_needed = kgs * self.get_price()
 
         if family.money < money_needed:
             raise DrugError(f"{money_needed:n}$ needed, but you only have {family.money:n}")
 
         family.money -= money_needed
-        family.drugs += kgs
 
+        return (self.deliver_drugs, kgs, family, dest)
+
+    def deliver_drugs(self, kgs, family, dest):
+        family.drugs += kgs
         Town.get(dest).variate_drugs(kgs)
 
+    def sell_drugs_immediately(self, kgs: int, family: Family, dest: TownID):
+        op = self.sell_drugs(kgs, family, dest)
+        return op[0](*op[1:])
 
+    
 class Ask():
     @staticmethod
     def confirm():
-        print("Confirm? (y/N)")
+        print("Confirm? (y/N)", end=" ")
         answer = input("... ")
         return answer == "y"
 
         
 # =========================================================== #
 from ndrangheta.read_dot import load_graph
+
 class AI:
     def __init__(self, simulator: "Simulator"):
         self.s = simulator
@@ -228,11 +246,11 @@ class AI:
         # Provo tutte le richieste; la prima che posso esaudire, la esaudisco;
         # do priorità a quelle più urgenti.
         # Per ora, unica opzione è comprare dai narcos        
-        for i, r in enumerate(sorted_reqs):
+        for r in sorted_reqs:
             cost = self.s.ask_drug_price_to_narcos(r.kgs)
             
             if fam.money > cost:
-                self.s.buy_from_narcos(family_id, r.kgs, fam.capital)
+                self.s.buy_from_narcos(family_id, r.kgs, fam.capital, immediate=True)
 
                 self.s.router.send_shipment_safest(
                     fam.capital, r.author,
@@ -246,8 +264,7 @@ class AI:
         
         
 class Simulator:
-    def __init__(self, graph, player_id=0):
-        # self.g = graph
+    def __init__(self, graph):
         self.router = Routing(graph)
         self.narcos = Narcos()
         self.player_id, self.player = 0, Family.FAMILIES[0]
@@ -255,27 +272,43 @@ class Simulator:
         self.ai = AI(self)
         self.turn = 0
 
-    def advance_time(self):
+
+    def advance_time(self):        
         for _, town in Town.TOWNS.items():
             town.advance_turn()
         
-        for id, family in Family.FAMILIES.items():
-            self.ai_turn(family)
+        for family_id in Family.FAMILIES:
+            self.family_turn(family_id)
 
+        # Human player
+        for op in self.player.scheduled_operations:
+            op[0](*op[1:])
+            
         self.turn += 1
 
-    def ai_turn(self, family: Family):
-        pass
+        
+    def family_turn(self, family_id: FamilyID):
+        # In this turn, every AI chooses what to route in next turn
+        if family_id != self.player_id:
+            self.ai.decide_shipments(family_id)
+            return
 
-    def buy_from_narcos(self, family_id, kgs, dest: TownID) -> bool:
-        family = Family.get(family_id)
-        return self.narcos.sell_drugs(kgs, family, dest)
+
+    def buy_from_narcos(self, family_id, kgs,
+                        dest: TownID, immediate=False) -> Union[Tuple[Callable, KG], None]:
     
+        family = Family.get(family_id)
+        if immediate:
+            return self.narcos.sell_drugs_immediately(kgs, family, dest)
+        else:
+            return self.narcos.sell_drugs(kgs, family, dest)
+
+        
     def ask_drug_price_to_narcos(self, kgs=1):
         return self.narcos.get_price(kgs)
 
     def send_shipment(self, id1: TownID, id2: TownID, ship: Shipment,
-                      mode="safe", **kwargs) -> int:
+                      mode="safe") -> int:
         if mode == "safe":
             return self.router.send_shipment_safest(id1, id2, ship)
         else:
@@ -309,9 +342,12 @@ def play():
                 Town.print_cities(player_id)
                 dest = int(input("Chose a destination city: "))
 
+                # Scala i soldi, delivera la droga solo il giorno dopo
                 if Ask.confirm():
-                    sim.buy_from_narcos(player_id, amount, dest)
-
+                    operation = sim.buy_from_narcos(player_id, amount, dest)
+                    player.scheduled_operations.append(operation)
+                    
+                    
             if s[0] == "send": #path
                 if s[1] == "manual":
                     nodes = [int(n) for n in s[2:]]
@@ -321,12 +357,27 @@ def play():
                         nodes[1:-2])
 
                 else: #safe
-                    sim.send_shipment(int(s[1]), int(s[2]), Shipment(int(s[3]), -1, int(s[2])))
+                    from_, to, amount = int(s[1]), int(s[2]), int(s[3])
+                    
+                    player.scheduled_operations.append(
+                        (sim.send_shipment,
+                         from_, to, Shipment(amount, -1, to)) 
+                    )
+                        # sim.send_shipment(int(s[1]), int(s[2]), Shipment(int(s[3]), -1, int(s[2])))
 
 
             if s[0] == "list":
                 Town.print_cities(player_id)
 
+            if s[0].startswith("req"):
+                if len(s) == 2:
+                    f_id = int(s[1])
+                else:
+                    f_id = player.id
+                
+                for r in Family.get(f_id).drug_requests:
+                    print(r)
+                        
             if s[0] == "q":
                 break
 

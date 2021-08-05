@@ -32,6 +32,7 @@ class Family():
         self.drugs: int = 0
         
         self.drug_requests: List[Tuple[FamilyID, float]] = list()
+        self.scheduled_operations: List[Tuple] = list()
         
         Family.FAMILIES[self.id] = self
 
@@ -153,6 +154,8 @@ class Town():
             print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold}", end=" ")
             if t.family == family_id:
                 print(f"- Drugs: {t.drugs}kg", end=" ")
+            if tid == Family.get(t.family).capital:
+                print(f"- CAPITAL", end=" ")
 
             print()
 
