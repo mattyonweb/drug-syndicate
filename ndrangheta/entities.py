@@ -147,13 +147,16 @@ class Town():
 
     
     @staticmethod
-    def print_cities(family_id):
+    def print_cities(family_id, exclude_others=False):
         for tid in Town.TOWNS:
             t = Town.get(tid)
+
+            if exclude_others and t.family != family_id:
+                continue
             
-            print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold}", end=" ")
+            print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold:.2f}", end=" ")
             if t.family == family_id:
-                print(f"- Drugs: {t.drugs}kg", end=" ")
+                print(f"- Drugs: {t.drugs:.2f}kg", end=" ")
             if tid == Family.get(t.family).capital:
                 print(f"- CAPITAL", end=" ")
 

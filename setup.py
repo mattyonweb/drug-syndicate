@@ -13,13 +13,13 @@ README = (HERE / "README.md").read_text()
 
 # This call to setup() does all the work
 setup(
-    name="temp",
+    name="modern-mafia",
     version="0.0.0.1",
-    description="description"
+    description="description",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/mattyonweb/<name>",
-    author="Matteo Cavada",
+    author="Jacopo Belbo",
     author_email="cvd00@insicuri.net",
     license="GNU General Public License v3.0",
     classifiers=[
@@ -29,6 +29,7 @@ setup(
     ],
     packages=find_packages(),
     install_requires=[
+        "networkx", "matplotlib", 
         # external libraries to automatically download before a pip-install
     ],
     include_package_data=True, #TODO?
@@ -38,7 +39,7 @@ setup(
     # },
     entry_points={
         "console_scripts": [
-            "<cli-app>=<Project>.<filename-no-py>:<func-name>",
+            "moder-mafia=ndrangheta.graph:play",
         ]
     },
     python_requires='>=3.9',

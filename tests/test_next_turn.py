@@ -28,7 +28,6 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         self.assertEqual(len(Family.get(0).drug_requests), 0)
         self.assertGreater(Town.get(1).drugs, 0)
         
-        
     
 class TestNextStep(unittest.TestCase):
     def setUp(self):

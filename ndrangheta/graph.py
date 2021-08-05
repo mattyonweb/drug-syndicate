@@ -198,6 +198,9 @@ class Narcos():
         Firstly, narcos gets all the money (sell_drugs()); then, at the next turn,
         the family will be delivered the drugs (deliver_drugs()).
         """
+        if Town.get(dest).family != family.id:
+            raise ShipmentError("Destination is of a different family!")
+        
         money_needed = kgs * self.get_price()
 
         if family.money < money_needed:
@@ -278,16 +281,17 @@ class Simulator:
             town.advance_turn()
         
         for family_id in Family.FAMILIES:
-            self.family_turn(family_id)
+            self.ai_family_turn(family_id)
 
         # Human player
         for op in self.player.scheduled_operations:
             op[0](*op[1:])
-            
+        self.player.scheduled_operations = list()
+        
         self.turn += 1
 
         
-    def family_turn(self, family_id: FamilyID):
+    def ai_family_turn(self, family_id: FamilyID):
         # In this turn, every AI chooses what to route in next turn
         if family_id != self.player_id:
             self.ai.decide_shipments(family_id)
@@ -298,6 +302,7 @@ class Simulator:
                         dest: TownID, immediate=False) -> Union[Tuple[Callable, KG], None]:
     
         family = Family.get(family_id)
+
         if immediate:
             return self.narcos.sell_drugs_immediately(kgs, family, dest)
         else:
@@ -317,6 +322,8 @@ class Simulator:
 # =========================================================== #
 
 def play():
+    import readline
+
     sim = Simulator(load_graph("tests/dots/inevitable_family.dot"))
     player_id = 0
     player    = Family.get(player_id)
@@ -339,7 +346,7 @@ def play():
 
                 print(f"{amount} is {price:n}$.")
 
-                Town.print_cities(player_id)
+                Town.print_cities(player_id, exclude_others=True)
                 dest = int(input("Chose a destination city: "))
 
                 # Scala i soldi, delivera la droga solo il giorno dopo
@@ -358,6 +365,9 @@ def play():
 
                 else: #safe
                     from_, to, amount = int(s[1]), int(s[2]), int(s[3])
+                    ship = Shipment(amount, -1, to)
+                    
+                    sim.router.is_valid_shipment(from_, to, ship)
                     
                     player.scheduled_operations.append(
                         (sim.send_shipment,

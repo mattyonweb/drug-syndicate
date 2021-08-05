@@ -31,12 +31,9 @@ class TestSafePathGraph(unittest.TestCase):
         except ShipmentError:
             pass
 
-        # try:
         r.safest_path(0, 0)
-        #     self.fail("Origin = destination!")
-        # except ShipmentError:
-        #     pass
 
+        
     def test_circle(self):
         g = load_graph("tests/dots/low_trust_path.dot")
         r = Routing(g)
@@ -105,6 +102,13 @@ class TestSafeShipmentGraph(unittest.TestCase):
         s = Shipment(kgs=0.5, costed=10_000, destination=1)
         self.r.send_shipment_safest(0, 1, s)
         self.assertAlmostEqual(Town.get(0).drugs, 0)
+
+    def test_05_cant_send_drugs_to_enemy_family(self):
+        try:
+            self.narcos.sell_drugs(1, self.family, 7)
+            self.fail("Shouldnt buy drug for other families!")
+        except ShipmentError:
+            pass
         
 def asd(lol):
     return lol
