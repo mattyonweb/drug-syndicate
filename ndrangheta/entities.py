@@ -5,13 +5,14 @@ from ndrangheta.utils import cap
 
 import random
 
+KG = float
 
 @dataclass
 class Request:
     kgs: float
     author: "TownID"
     needed_before: int = 1
-
+ 
 
 # =========================================================== #
 
@@ -25,10 +26,11 @@ class Family():
         
         self.name = name
         self.id = id
-
+        self.capital: "TownID" = None
+        
         self.money: int = 1_000_000
         self.drugs: int = 0
-
+        
         self.drug_requests: List[Tuple[FamilyID, float]] = list()
         
         Family.FAMILIES[self.id] = self
@@ -51,18 +53,19 @@ class LocalFamily:
         
         self.regulars = 7 #7 regulars user every 1000 (once a day)
         self.saltuary = 14 #14 non-regular users every 1000 (once a month)
-        self.regular_dose = 0.3 #0.3 grams
-        self.salutar_dose = 0.1
+        self.regular_dose: KG = 0.0003 #0.0003 kg => 0.3 grams
+        self.salutar_dose: KG = 0.0001
 
+        self.sent_request = False
 
-    def avg_daily_regular_dose(self) -> int:
+    def avg_daily_regular_dose(self) -> KG:
         #TODO: add randomness on number of self.regulars
         return self.regular_dose * self.regulars * (self.town.population / 1000)
 
-    def avg_monthly_saltuar_dose(self) -> int:
+    def avg_monthly_saltuar_dose(self) -> KG:
         return self.salutar_dose * self.saltuary * (self.town.population / 1000)
 
-    def estimate_monthly_consumption(self):
+    def estimate_monthly_consumption(self) -> KG:
         return int( #30 = 30 days
             30 * self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose()
         ) + 2 * self.avg_daily_regular_dose() # just for safety
@@ -83,6 +86,10 @@ class LocalFamily:
             return 0
     
     def evaluate_need_for_drug(self):
+        if self.sent_request:
+            # If already sent a request, dont do it again
+            return
+        
         remaining_days = self.estimate_remaining_days()
         
         if remaining_days < 5:
@@ -93,6 +100,8 @@ class LocalFamily:
                     needed_before=remaining_days
                 )
             )
+
+            self.sent_request = True
             
 # =========================================================== #
 
@@ -129,6 +138,11 @@ class Town():
     @staticmethod
     def get(id: TownID):
         return Town.TOWNS[id]
+
+    
+    @staticmethod
+    def get_of_family(id: FamilyID):
+        return [t for t in Town.TOWNS.values() if t.family == id]
 
     
     @staticmethod
@@ -175,6 +189,8 @@ class Town():
                          retail_multiplier=1):
         
         self.variate_drugs(ship.kgs)
+        self.local_family.sent_request = False
+        
         # TODO: qui ci sarà da verificare contratti e simili
         # family = Family.get(family_id)
         # family.money += ship.costed * retail_multiplier

@@ -4,7 +4,7 @@ graph G {
 
   0 -- 7 -- 6;
 
-  0 [label=A0, family=0, hold=0.6];
+  0 [label=A0, family=0, hold=0.6, capital=t];
   1 [label=A1, family=0, hold=0.6];
   2 [label=A2, family=0, hold=0.6];
   3 [label=A3, family=0, hold=0.6];
@@ -15,6 +15,6 @@ graph G {
   9 [label=A9, family=0, hold=0.6];
   10 [label=A10, family=0, hold=0.6];
   
-  7 [label=B7, family=1, hold=0.7, pop=99];
+  7 [label=B7, family=1, hold=0.7, pop=99, capital=t];
 
 }

@@ -9,14 +9,14 @@ graph G {
 
   0 [family=0]
   1 [family=0]
-  2 [family=0]
+  2 [family=0, capital=t]
   5 [family=0]
   
   3 [family=1]
   4 [family=1]
   6 [family=1]
-  7 [family=1]
+  7 [family=1, capital=t]
 
-  8 [family=2]
+  8 [family=2, capital=t]
   
 }

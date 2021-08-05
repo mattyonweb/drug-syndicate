@@ -209,14 +209,50 @@ class Ask():
         
 # =========================================================== #
 from ndrangheta.read_dot import load_graph
+class AI:
+    def __init__(self, simulator: "Simulator"):
+        self.s = simulator
 
+    def decide_shipments(self, family_id):
+        fam = Family.get(family_id)
+
+        if len(fam.drug_requests) == 0:
+            return
+
+        # Per ora:
+        # 1. Una richiesta per turno esaudita
+        # 2. Priorità a quelle con days_withinig minore
+        
+        sorted_reqs = sorted(fam.drug_requests, key=lambda r: r.needed_before)
+        
+        # Provo tutte le richieste; la prima che posso esaudire, la esaudisco;
+        # do priorità a quelle più urgenti.
+        # Per ora, unica opzione è comprare dai narcos        
+        for i, r in enumerate(sorted_reqs):
+            cost = self.s.ask_drug_price_to_narcos(r.kgs)
+            
+            if fam.money > cost:
+                self.s.buy_from_narcos(family_id, r.kgs, fam.capital)
+
+                self.s.router.send_shipment_safest(
+                    fam.capital, r.author,
+                    Shipment(r.kgs, cost, r.author)
+                )
+
+                fam.drug_requests.remove(r)
+                break            
+
+            
+        
+        
 class Simulator:
     def __init__(self, graph, player_id=0):
-        self.g = graph
-        self.router = Routing(self.g)
+        # self.g = graph
+        self.router = Routing(graph)
         self.narcos = Narcos()
         self.player_id, self.player = 0, Family.FAMILIES[0]
 
+        self.ai = AI(self)
         self.turn = 0
 
     def advance_time(self):

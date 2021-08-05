@@ -1,0 +1,8 @@
+graph G {
+
+  0 -- 1
+
+  0 [family=0, hold=0.85, pop=10, drugs=100, capital=t]
+  1 [family=0, hold=0.85, pop=20]
+  
+}
