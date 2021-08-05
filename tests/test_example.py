@@ -110,5 +110,3 @@ class TestSafeShipmentGraph(unittest.TestCase):
         except ShipmentError:
             pass
         
-def asd(lol):
-    return lol

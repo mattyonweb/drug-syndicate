@@ -8,7 +8,7 @@ from networkx.algorithms.shortest_paths.generic import shortest_path
 
 from ndrangheta.config import *
 from ndrangheta.entities import *
-from ndrangheta.utils import montecarlo, show
+from ndrangheta.utils import montecarlo, show, Schedule
 
 from typing import *
 
@@ -208,15 +208,16 @@ class Narcos():
 
         family.money -= money_needed
 
-        return (self.deliver_drugs, kgs, family, dest)
+        # return (self.deliver_drugs, kgs, family, dest)
+        return Schedule(self.deliver_drugs, kgs, family, dest)
 
     def deliver_drugs(self, kgs, family, dest):
         family.drugs += kgs
         Town.get(dest).variate_drugs(kgs)
 
     def sell_drugs_immediately(self, kgs: int, family: Family, dest: TownID):
-        op = self.sell_drugs(kgs, family, dest)
-        return op[0](*op[1:])
+        return self.sell_drugs(kgs, family, dest)()
+        # return op[0](*op[1:])
 
     
 class Ask():
@@ -276,19 +277,20 @@ class Simulator:
         self.turn = 0
 
 
-    def advance_time(self):        
-        for _, town in Town.TOWNS.items():
-            town.advance_turn()
-        
-        for family_id in Family.FAMILIES:
-            self.ai_family_turn(family_id)
+    def advance_time(self, turns=1):
+        for _ in range(turns):
+            for _, town in Town.TOWNS.items():
+                town.advance_turn()
 
-        # Human player
-        for op in self.player.scheduled_operations:
-            op[0](*op[1:])
-        self.player.scheduled_operations = list()
-        
-        self.turn += 1
+            for family_id in Family.FAMILIES:
+                self.ai_family_turn(family_id)
+
+            # Human player
+            for op in self.player.scheduled_operations:
+                op() #op[0](*op[1:])
+            self.player.scheduled_operations = list()
+
+            self.turn += 1
 
         
     def ai_family_turn(self, family_id: FamilyID):
@@ -324,13 +326,13 @@ class Simulator:
 def play():
     import readline
 
-    sim = Simulator(load_graph("tests/dots/inevitable_family.dot"))
+    sim = Simulator(load_graph("tests/dots/fun.dot"))
     player_id = 0
     player    = Family.get(player_id)
     
     while True:
         try:
-            player.stats()
+            player.stats(turn=sim.turn)
 
             s = input("λ) ").split(" ")
 
@@ -356,24 +358,13 @@ def play():
                     
                     
             if s[0] == "send": #path
-                if s[1] == "manual":
-                    nodes = [int(n) for n in s[2:]]
-                    sim.router.send_shipment_manual(
-                        nodes[0], nodes[-2], #start, end
-                        Shipment(int(nodes[-1]), None, nodes[-2]), #amount
-                        nodes[1:-2])
-
-                else: #safe
-                    from_, to, amount = int(s[1]), int(s[2]), int(s[3])
-                    ship = Shipment(amount, -1, to)
+                from_, to, amount = int(s[1]), int(s[2]), int(s[3])
+                ship = Shipment(amount, -1, to)
                     
-                    sim.router.is_valid_shipment(from_, to, ship)
-                    
+                if sim.router.is_valid_shipment(from_, to, ship):
                     player.scheduled_operations.append(
-                        (sim.send_shipment,
-                         from_, to, Shipment(amount, -1, to)) 
+                        Schedule(sim.send_shipment, from_, to, ship)
                     )
-                        # sim.send_shipment(int(s[1]), int(s[2]), Shipment(int(s[3]), -1, int(s[2])))
 
 
             if s[0] == "list":
@@ -392,7 +383,8 @@ def play():
                 break
 
             if s[0] == "t":
-                sim.advance_time()
+                t = int(s[1]) if len(s) == 2 else 1
+                sim.advance_time(turns=t)
                 
         except Exception as e:
             import traceback

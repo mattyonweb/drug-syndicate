@@ -40,9 +40,12 @@ class Family():
     def get(id: FamilyID):
         return Family.FAMILIES[id]
 
-    def stats(self):
-        print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
-
+    def stats(self, turn=None):
+        if turn is None:
+            print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
+        else:
+            print(f"T{turn} ======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
+        
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
 

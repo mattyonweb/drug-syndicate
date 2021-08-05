@@ -4,15 +4,22 @@ from networkx import draw
 from matplotlib.pyplot import show as show_
 
 def montecarlo(threshold: float) -> bool:
+    """ 
+    Montecarlo random draw.
+    """
     return random() > threshold
 
+
 def cap(value, low, high):
+    """
+    Cap a value between two extremes.
+    """
     if value > high:
         return high
     if value < low:
         return low
-
     return value
+
 
 def show(g):
     """
@@ -26,4 +33,18 @@ def show(g):
     
     show_()
 
+# =========================================================== #
+
+class Schedule:
+    def __init__(self, func: Callable, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self):
+        return self.func(*self.args, **self.kwargs)
+    
+    
+
+    
 
