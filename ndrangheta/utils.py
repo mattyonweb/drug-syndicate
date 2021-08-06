@@ -1,5 +1,6 @@
 from typing import *
 from random import random
+from dataclasses import dataclass
 from networkx import draw
 from matplotlib.pyplot import show as show_
 
@@ -35,10 +36,23 @@ def show(g):
 
 # =========================================================== #
 
+class When:
+    pass
+
+@dataclass
+class In(When):
+    turn: int #offset relativo, non assoluto
+
+@dataclass
+class Every(When):
+    turn: int
+    countdown: int
+    
 class Schedule:
-    def __init__(self, func: Callable, *args, **kwargs):
+    def __init__(self, func: Callable, when: When, *args, **kwargs):
         self.func = func
         self.args = args
+        self.when = when
         self.kwargs = kwargs
 
     def __call__(self):

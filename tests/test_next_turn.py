@@ -48,8 +48,36 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         self.s.send_shipment(0, 1, ship)
         self.s.advance_time()
         self.assertEqual(ship.price_per_kg, Town.get(1).local_family.drug_cost_per_kg)
+
         
-    
+    def test_local_families_pay_weekly_taxes(self):
+        town = Town.get(0)
+        
+        town.local_family.money = 1_000_000
+        town.population = 1
+
+        money = Family.get(0).money
+
+        #####
+        
+        Family.get(0).change_tax_in(town_id=0, new_tax_rate=0.20)
+
+        self.s.advance_time(turns=8)
+
+        self.assertAlmostEqual(town.local_family.money, 800_000, delta=5_000)
+        self.assertAlmostEqual(Family.get(0).money, money + 200_000, delta=5_000)
+
+        #####
+        
+        Family.get(0).change_tax_in(town_id=0, new_tax_rate=1.0)
+        
+        self.s.advance_time(turns=8)
+        self.assertAlmostEqual(town.local_family.money, 0, delta=1)
+        self.assertAlmostEqual(Family.get(0).money, money + 1_000_000, delta=5_000)
+
+        
+        
+        
 class TestNextStep(unittest.TestCase):
     def setUp(self):
         self.s = Simulator(load_graph("tests/dots/simple.dot"))

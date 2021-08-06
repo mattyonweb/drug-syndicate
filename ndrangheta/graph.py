@@ -224,7 +224,7 @@ class Narcos():
         family.money -= money_needed
 
         # return (self.deliver_drugs, kgs, family, dest)
-        return Schedule(self.deliver_drugs, kgs, family, dest)
+        return Schedule(self.deliver_drugs, In(turn=1), kgs, family, dest)
 
     def deliver_drugs(self, kgs, family, dest):
         Town.get(dest).variate_drugs(kgs)
@@ -328,6 +328,7 @@ class Simulator:
     def ask_drug_price_to_narcos(self, kgs=1):
         return self.narcos.get_price(kgs)
 
+    
     def send_shipment(self, id1: TownID, id2: TownID, ship: Shipment,
                       mode="safe") -> int:
         if mode == "safe":
@@ -379,7 +380,7 @@ def play():
                     
                 if sim.router.is_valid_shipment(from_, to, ship):
                     player.scheduled_operations.append(
-                        Schedule(sim.send_shipment, from_, to, ship)
+                        Schedule(sim.send_shipment, In(turn=1), from_, to, ship)
                     )
 
 

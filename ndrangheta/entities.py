@@ -1,7 +1,7 @@
 from typing import *
 from dataclasses import dataclass
 
-from ndrangheta.utils import cap, montecarlo
+from ndrangheta.utils import cap, montecarlo, Schedule, When, In, Every
 
 import random
 
@@ -36,6 +36,7 @@ class Family():
         
         Family.FAMILIES[self.id] = self
 
+        
     @staticmethod
     def get(id: FamilyID):
         return Family.FAMILIES[id]
@@ -49,6 +50,13 @@ class Family():
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
 
+    def receive_tax(self, from_: "TownID", money):
+        # TODO: from_ usabile in futuro per AI
+        self.money += money
+        
+    def change_tax_in(self, town_id: "TownID", new_tax_rate: int):
+        Town.get(town_id).local_family.change_tax_rate(new_tax_rate)
+    
         
 class Police(Family):
     def local_asks_for_drug(self, request: Request):
@@ -68,10 +76,21 @@ class LocalFamily:
 
         self.money = 0
         self.drug_cost_per_kg = 80_000 # TODO deve essere fornito dal package/master family
-        self.tax = 0.5 # TODO
+        self.tax: float = 0.5 # TODO
         
         self.sent_request = False
+        self.futures = [Schedule(self.pay_taxes, Every(turn=7, countdown=7))]
+        self.turn = 0
 
+    def change_tax_rate(self, new_tax: float):
+        assert(new_tax >= 0)
+        self.tax = new_tax
+
+    def pay_taxes(self):
+        tax_money = self.tax * self.money
+        self.money -= tax_money
+        self.parent.receive_tax(self.town.id, tax_money)
+        
     def avg_daily_regular_dose(self) -> KG:
         #TODO: add randomness on number of self.regulars
         return self.regular_dose * self.regulars * (self.town.population / 1000)
@@ -131,12 +150,34 @@ class LocalFamily:
             )
 
             self.sent_request = True
-
-    def send_weekly_taxes_to_family(self):
-        # TODO
-        if self.town.hold <= 0.6:
-            pass
             
+
+    def advance_turn(self):
+        self.turn += 1
+
+        # Scheduled activites executer
+        done = list()
+        for i, task in enumerate(self.futures):
+            if isinstance(task.when, Every):
+                if task.when.countdown == 0:
+                    task()
+                    task.when.countdown = task.when.turn
+                else:
+                    task.when.countdown -= 1
+                    
+            elif isinstance(task.when, In):
+                if task.when.turn == 0:
+                    task()
+                    done.append(i)
+                else:
+                    task.when.turn -= 1
+        # removes done tasks
+        for i in done[::-1]:
+            del self.futures[i]
+            
+                    
+        self.evaluate_need_for_drug()
+
 # =========================================================== #
 
 TownID = int
@@ -261,12 +302,11 @@ class Town():
     # =========================================================== #
     
     def consume_drugs_single_day(self):
-        # self.variate_drugs(- (self.loc avg_daily_regular_dose() + self.avg_monthly_saltuar_dose()/30))
         self.variate_drugs(- self.local_family.sell_daily_doses())
         
     def advance_turn(self):
         if self.family == -1:
             pass # is police town
         else:
-            self.consume_drugs_single_day()
-            self.local_family.evaluate_need_for_drug()
+            self.consume_drugs_single_day() #TODO perchè qui?!
+            self.local_family.advance_turn()

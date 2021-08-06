@@ -1,5 +1,6 @@
 * Da fare domani
 
+** Scrivere test suite per testare gli Schedule()
 
 ** Inizialmente, se ci sono molte città con droga=0, non ci sarà molta richiesta di droga. Definire il numero di dosi vendute in funzione della "richiesta" di droga nella città, ie. in base a da quanto è presente la mafia in quella città.
 
