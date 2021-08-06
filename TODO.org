@@ -2,6 +2,13 @@
 
 ** Scrivere test suite per testare gli Schedule()
 
+** BUG: scenario
+- Città X ha fatto richiesta a familgia master per un package entro 5gg
+- Dopo 3gg città X intercetta un pacco di una famiglia nemica
+- Siccome il apcco intercettato è grande, dovresti disdire la richiesta alla famiglia master
+
+In generale, quando per vie traverse una famiglia locale riesce ad impossessarsi di droga, deve ritirare la propria eventuale richiesta pregressa.
+
 ** Inizialmente, se ci sono molte città con droga=0, non ci sarà molta richiesta di droga. Definire il numero di dosi vendute in funzione della "richiesta" di droga nella città, ie. in base a da quanto è presente la mafia in quella città.
 
 

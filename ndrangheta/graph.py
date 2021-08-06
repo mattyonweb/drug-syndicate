@@ -227,8 +227,8 @@ class Narcos():
         return Schedule(self.deliver_drugs, In(turn=1), kgs, family, dest)
 
     def deliver_drugs(self, kgs, family, dest):
-        Town.get(dest).variate_drugs(kgs)
-
+        Town.get(dest).receive_shipment(Shipment(kgs, 80_000, family))
+        
     def sell_drugs_immediately(self, kgs: int, family: Family, dest: TownID):
         return self.sell_drugs(kgs, family, dest)()
         # return op[0](*op[1:])
@@ -275,7 +275,7 @@ class AI:
                     Shipment(r.kgs, 80_000, r.author)
                 )
 
-                fam.drug_requests.remove(r)
+                # fam.drug_requests.remove(r)
                 break            
 
             
@@ -336,6 +336,10 @@ class Simulator:
         else:
             return self.router.send_shipment_safest(id1, id2, ship)
 
+        
+    def change_tax(self, player_id: FamilyID, city: TownID, amount: float):
+        Family.get(player_id).change_tax_in(city, amount)
+        
 # =========================================================== #
 
 def play():
@@ -358,15 +362,16 @@ def play():
             if s[0] == "drug" and s[1].startswith("p"):
                 print(f"Currently sold at {sim.ask_drug_price_to_narcos():n}€ / kg")
 
+            if s[0] == "tax":
+                city, rate = int(s[1]), int(s[2] if s[2][-1] != "%" else s[2][:-1]) / 100
+                sim.change_tax(player_id, city, rate)
+                
             if s[0] == "buy":
                 amount = int(s[1])
                 price  = sim.ask_drug_price_to_narcos(kgs=amount)
                 dest   = player.capital
                 
                 print(f"{amount}kg is {price:n}$ - delivered tomorrow in {dest}")
-
-                # Town.print_cities(player_id, exclude_others=True)
-                # dest = int(input("Chose a destination city: "))
 
                 # Scala i soldi, delivera la droga solo il giorno dopo
                 if Ask.confirm():

@@ -75,7 +75,25 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         self.assertAlmostEqual(town.local_family.money, 0, delta=1)
         self.assertAlmostEqual(Family.get(0).money, money + 1_000_000, delta=5_000)
 
+
+    def test_call_off_request_if_somehow_local_family_get_hold_of_drugs(self):
+        town = Town.get(0)
+        town.money = 0
+        town.drugs = 0
+
+        self.s.advance_time()
+
+        self.assertTrue(any(r.author == 0 for r in Family.get(0).drug_requests))
+
+        self.s.buy_from_narcos(family_id=0, kgs=10, dest=0, immediate=True)
+        self.assertEqual(town.drugs, 10)
         
+        self.s.advance_time()
+
+        # town ha ritirato la richiesta
+        self.assertFalse(
+            any(r.author == 0 for r in Family.get(0).drug_requests)
+        )
         
         
 class TestNextStep(unittest.TestCase):

@@ -34,6 +34,23 @@ def show(g):
     
     show_()
 
+
+def del_satisfying(l: List, f: Callable):
+    """
+    Delete elements from list not satisfying a property.
+    """
+    return [x for x in l if not f(x)]
+
+# =========================================================== #
+
+class GenericMafiaException(Exception): pass
+class ViolationError(GenericMafiaException): pass
+class ValueError__(GenericMafiaException): pass
+
+def my_assert(cond: bool, exception: Exception):
+    if not cond:
+        raise exception
+    
 # =========================================================== #
 
 class When:

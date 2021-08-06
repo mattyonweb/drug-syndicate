@@ -1,7 +1,8 @@
 from typing import *
 from dataclasses import dataclass
 
-from ndrangheta.utils import cap, montecarlo, Schedule, When, In, Every
+# from ndrangheta.utils import cap, montecarlo, Schedule, When, In, Every
+from ndrangheta.utils import *
 
 import random
 
@@ -12,7 +13,6 @@ class Request:
     kgs: float
     author: "TownID"
     needed_before: int = 1
- 
 
 # =========================================================== #
 
@@ -49,12 +49,28 @@ class Family():
         
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
+    def cancel_request(self, author: "TownID"):
+        print("AUTHOR", author)
+        self.drug_requests = del_satisfying(
+            self.drug_requests,
+            lambda r: r.author == author
+        )
 
     def receive_tax(self, from_: "TownID", money):
         # TODO: from_ usabile in futuro per AI
         self.money += money
         
-    def change_tax_in(self, town_id: "TownID", new_tax_rate: int):
+    def change_tax_in(self, town_id: "TownID", new_tax_rate: float):
+        my_assert(
+            Town.get(town_id).family == self.id,
+            ViolationError("Attempted to change taxes to not owned city")
+        )
+
+        my_assert(
+            0.0 <= new_tax_rate <= 1.0,
+            ValueError__("Tax rate not between 0.0 and 1.0 (or 0 and 100%)")
+        )
+        
         Town.get(town_id).local_family.change_tax_rate(new_tax_rate)
     
         
@@ -129,16 +145,27 @@ class LocalFamily:
         """
         To be called from Town() when Town() is destination of a shipment.
         """
-        self.sent_request = False
+        # self.sent_request = False
         self.drug_cost_per_kg = ship.price_per_kg
+        self.evaluate_need_for_drug()
 
         
-    def evaluate_need_for_drug(self):
-        if self.sent_request:
-            # If already sent a request, dont do it again
-            return
-        
+    def evaluate_need_for_drug(self):        
         remaining_days = self.estimate_remaining_days()
+        
+        # If waiting for a package from master family...
+        if self.sent_request:
+            # ...but somehow (eg. stolen a package from opponent) you
+            # dont need it anymore, call it off
+            if remaining_days >= 5:
+                self.parent.cancel_request(author=self.town.id)
+                self.sent_request = False
+
+            # TODO: dovresti mettere la condizione: se rem_days < 5:
+            # cancella la vecchia richiesta dalla master family,
+            # aggiungi nuova richiesta con statistiche aggiornate
+            # (quanta te ne serve, entro quanto, ecc)
+            return
         
         if remaining_days < 5:
             self.parent.local_asks_for_drug(
@@ -171,11 +198,11 @@ class LocalFamily:
                     done.append(i)
                 else:
                     task.when.turn -= 1
+                    
         # removes done tasks
         for i in done[::-1]:
             del self.futures[i]
-            
-                    
+              
         self.evaluate_need_for_drug()
 
 # =========================================================== #
@@ -230,6 +257,7 @@ class Town():
             print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold:.2f}", end=" ")
             if t.family == family_id:
                 print(f"- Drugs: {t.drugs:.2f}kg", end=" ")
+                print(f"- Taxes: {100*t.local_family.tax:.0f}%", end=" ")
             if tid == Family.get(t.family).capital:
                 print(f"- CAPITAL", end=" ")
 
@@ -256,6 +284,7 @@ class Town():
         assert self.drugs >= 0, (f"Drugs under 0 in city {self.id}; "
                                  f"was {self.drugs + amount}, removed {amount}")
 
+        # TODO: fatto += a destinazione, ma fatto anche -= alla partenza?
         Family.get(self.family).drugs += amount
         
         
@@ -291,12 +320,14 @@ class Town():
  
         
     def receive_shipment(self, ship: "Shipment"):
+        print("RECEIVED SHIP")
         self.variate_drugs(ship.kgs)        
         self.local_family.receive_shipment(ship)
                                            
 
     def capture_shipment(self, ship: "Shipment"):
         self.variate_drugs(ship.kgs)
+        self.local_family.evaluate_need_for_drug()
         # TODO: ci starebbe tipo che aumenta (o diminuisce?) la hold?
 
     # =========================================================== #
