@@ -37,6 +37,11 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         Town.print_cities(1)
         
         self.assertGreater(Town.get(7).drugs, 100)
+
+    def test_when_a_day_passes_local_families_get_richer_bc_of_drug_sold(self):
+        old_money = Town.get(0).local_family.money
+        self.s.advance_time()
+        self.assertGreater(Town.get(0).local_family.money, old_money)
         
     
 class TestNextStep(unittest.TestCase):

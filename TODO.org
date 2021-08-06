@@ -1,14 +1,22 @@
 * Da fare domani
 
-** DONE Creare un DOT con solo due nodi, della stessa famiglia, per prove semplificate  
 
 ** Inizialmente, se ci sono molte città con droga=0, non ci sarà molta richiesta di droga. Definire il numero di dosi vendute in funzione della "richiesta" di droga nella città, ie. in base a da quanto è presente la mafia in quella città.
 
-** Implementare la bozza di contratti, Family.local_ask_for_drugs() (un metodo observer)
 
-** Scrivere tests su meccanismi di richiesta di droga da parte di famiglie locali.
+** Add contracts
 
-** If package is stolen in an hostile node, the node should increase its drugs!
+- Local family =LF= acknowledges that there is need for drugs, and stipulate a "contract" with the main family =MF=:
+  
+  - =LF= pays 0$ upfront
+  - =LF= will receive 1kg of drugs (hopefully) the next day
+  - =MF= will pretend eg. 60% of the gain, to be received every week 
+    
+- Main family sends 1kg of drug for 1000$ to a local family. 
+- That is delivered to the local family; +the local family will pay in advance, irregardless of what they will actually receive (maybe only when hold is low they will pretend payment at delivery)+
+- After one week, the profit of =LF= will be "taxed" at 60%
+- If =MF= does not deliver within 5 days, the hold of the family in that city will progressively get lower. In the meanwhile, =LF= will sell smaller doses
+  
 
 * Immediate
 
@@ -19,19 +27,6 @@ Also: make local families ask main family for drug.
 ** Add "happiness" in cities
 Depending on how steadily drugs is delivered, when needed
 
-** Add contracts
-
-- Local family =LF= acknowledges that there is need for drugs, and stipulate a "contract" with the main family =MF=:
-  
-  - =LF= pays 1000$ (a low price)
-  - =LF= will receive 1kg of drugs (hopefully) within 5 days
-  - =MF= will pretend eg. 60% of the gain after one month 
-    
-- Main family sends 1kg of drug for 1000$ to a local family. 
-- That is delivered to the local family; the local family will pay in advance, irregardless of what they will actually receive (maybe only when hold is low they will pretend payment at delivery)
-- After one month, the profit of =LF= will be "taxed" at 60%
-- If =MF= does not deliver within 5 days, the hold of the family in that city will progressively get lower. In the meanwhile, =LF= will sell smaller doses
-  
 
 ** Add basic AI
 

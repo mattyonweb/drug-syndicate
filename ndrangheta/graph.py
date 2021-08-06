@@ -87,8 +87,10 @@ class Routing:
         town = Town.get(end)
 
         if town.family != my_family:
-            if not montecarlo(town.hold):
-                # Se hold avversaria molto alta, molto probabile perdere il carico
+            # hold = 1    => prob = 1
+            # hold = 0.75 => prob = 0.5
+            # hold = 0.50 => prob = 0
+            if not montecarlo(town.hold - (1 - town.hold)):
                 self.describe_shipment(town, 0, my_family)
                 # ship.displace(0, town)
                 return False
@@ -122,7 +124,7 @@ class Routing:
             ok = self.move_single(from_node, town_id, ship, my_family)
 
             if not ok:
-                print(f"Failed to deliver, package captured in {town_id}! Lost {ship.kgs}!")
+                print(f"Failed to deliver, package captured in {town_id}! Lost {ship.kgs}kg!")
                 Town.get(town_id).capture_shipment(ship)
                 return 0
             
@@ -213,7 +215,6 @@ class Narcos():
         return Schedule(self.deliver_drugs, kgs, family, dest)
 
     def deliver_drugs(self, kgs, family, dest):
-        family.drugs += kgs
         Town.get(dest).variate_drugs(kgs)
 
     def sell_drugs_immediately(self, kgs: int, family: Family, dest: TownID):
@@ -327,7 +328,8 @@ class Simulator:
 def play():
     import readline
 
-    sim = Simulator(load_graph("tests/dots/fun.dot"))
+    # sim = Simulator(load_graph("tests/dots/fun.dot"))
+    sim = Simulator(load_graph("ndrangheta/example.dot"))
     player_id = 0
     player    = Family.get(player_id)
     

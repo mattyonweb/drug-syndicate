@@ -66,6 +66,9 @@ class LocalFamily:
         self.regular_dose: KG = 0.0003 #0.0003 kg => 0.3 grams
         self.salutar_dose: KG = 0.0001
 
+        self.money = 0
+        self.drug_cost_per_kg = 80_000 # TODO deve essere fornito dal package/master family
+        
         self.sent_request = False
 
     def avg_daily_regular_dose(self) -> KG:
@@ -83,17 +86,22 @@ class LocalFamily:
     def estimate_remaining_days(self):
         return self.town.drugs / (self.estimate_monthly_consumption() / 30)
         
-    def sell_daily_doses(self):
+    def sell_daily_doses(self) -> KG:
+        # TODO: this function does two things simulatneously,
+        # sell doses and change town hold. Safe to do both here?
         remaining_days = self.estimate_remaining_days()
 
         if remaining_days > 5:
-            return self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose() / 30
+            sold_kgs = self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose() / 30
         elif remaining_days > 1:
             self.town.hold = cap(self.town.hold - 0.01, 0.5, 1)
-            return 0.5 * (self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose() / 30)
+            sold_kgs = 0.5 * (self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose() / 30)
         else:
             self.town.hold = cap(self.town.hold - 0.05, 0.5, 1)
-            return 0
+            sold_kgs = 0
+
+        self.money += self.drug_cost_per_kg * sold_kgs
+        return sold_kgs
     
     def evaluate_need_for_drug(self):
         if self.sent_request:
@@ -191,6 +199,8 @@ class Town():
         assert self.drugs >= 0, (f"Drugs under 0 in city {self.id}; "
                                  f"was {self.drugs + amount}, removed {amount}")
 
+        Family.get(self.family).drugs += amount
+        
         
     def mail_shipment(self, ship: "Shipment"):
         """

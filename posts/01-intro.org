@@ -1,0 +1,125 @@
+#+TITLE: Introduction 
+#+AUTHOR: Jacopo Bolbo
+#+EMAIL: cvd00@insicuri.net
+
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [a4paper]
+#+LATEX_HEADER: \input{$HOME/.emacs.d/latex-preamble.tex}
+
+* The core mechanic
+
+This game is built upon simple graph-theoretic ideas.
+
+The game map is represented as a graph: cities are nodes, while edges are roads that link two cities.
+
+A number of families controls subsets of the nodes; each family is subdivided in local families, one for each town they own.
+
+#+BEGIN_SRC dot :file 01-graph.png :cmdline -Kfdp -Tpng
+    graph G {
+    
+      node [style=filled, color=white]
+    
+      0 -- {1 2}
+      1 -- {2}
+      2 -- {3 4}
+      3 -- {5 6}
+      4 -- 6
+      5 -- {7 8}
+    
+      0 [fillcolor=bisque, family=0, pop=10]
+      1 [fillcolor=bisque, family=0, pop=10]
+      2 [fillcolor=bisque, family=0, pop=60, capital=t, hold=0.9, color=black]
+      5 [fillcolor=bisque, family=0, pop=50]
+      
+      3 [fillcolor=lightskyblue1, family=1, hold=0.6]
+      4 [fillcolor=lightskyblue1, family=1]
+      6 [fillcolor=lightskyblue1, family=1]
+      7 [fillcolor=lightskyblue1, family=1, hold=0.95, capital=t, color=black]
+    
+      8 [fillcolor=grey, family=-1, capital=t, color=black]
+      
+    }
+#+END_SRC
+
+#+RESULTS:
+[[file:01-graph.png]]
+
+In this example, the number on each node is an ID for the city; the colors represents which family controls a given city. The three cities with black borders are the "capital" of each family.
+
+** Holding a city
+
+Organized crime is not (at least in this game) as monolithic as it may sound: the distributed nature of drug dealing imposes, in fact, to grant local families some degree of freedom.
+
+If local families regularly receive the agreed amount of drug every month, you can be certain that the central family will have a strong hold even on the most periferical of its cities - that will produce great benefits, as we will see in a moment.
+
+If, on the other end, shipments don't come in regularly, or they come "light", well, you will /have some unhappy people out there/.
+
+** Drugs, and distribution thereof
+
+Drugs are first delivered, by sea or air, in the capital of each family. In this first phase, Narcos are responsible for transportation.
+
+Let's say then that city number 5 is low on drugs, and asks the main family for a re-up. The main family buys 10kg of drugs from the narcos, which are delivered in city number 2 (the capital).
+
+#+BEGIN_SRC dot :file 01-path.png :cmdline -Kfdp -Tpng
+  graph G {
+
+    node [style=filled, color=white]
+
+    0 -- {1 2}
+    1 -- {2}
+    2 -- 3 [color=red, penwidth=2]
+    2 -- 4
+    3 -- 5 [color=red, penwidth=2]
+    3 -- 6
+    4 -- 6
+    5 -- {7 8}
+
+    0 [fillcolor=bisque, family=0, pop=10]
+    1 [fillcolor=bisque, family=0, pop=10]
+    2 [label=<2<br/><font point-size="7">0.9</font>>, fillcolor=bisque, family=0, pop=60, capital=t, hold=0.9, color=black]
+    5 [label=<5<br/><font point-size="7">0.6</font>>, fillcolor=bisque, family=0, pop=50, hold=0.6]
+
+    3 [label=<3<br/><font point-size="7">0.7</font>>, fillcolor=lightskyblue1, family=1, hold=0.7]
+    4 [fillcolor=lightskyblue1, family=1]
+    6 [fillcolor=lightskyblue1, family=1]
+    7 [fillcolor=lightskyblue1, family=1, hold=0.95, capital=t, color=black]
+
+    8 [fillcolor=grey, family=-1, capital=t, color=black]
+
+  }
+#+END_SRC
+
+#+RESULTS:
+[[file:01-path.png]]
+
+As you can see, the journey from city 2 to city 5 involves a passage through city 3, which is controlled by another family. The small numbers in these cities represent the /hold/ of the respective local families on each town: a value close to 1 indicates solid control, while values close to 0.5 represents lack of discipline and loyalty.
+
+When you send a /package/ through a city, you should consider that, depending on the hold exerted, you will lose a percentage of you package: ya know, corruption, petty theft, showdowns and so on are pretty widespread in criminal organizations, even in towns with the most disciplined and loyal local detachments.
+
+In other words, in each town you package will pass through, you will lose a small or big percenteage of you package; the general rules are:
+
+- If you pass through a frendly city, you will lose a percenteage linearly dependent on your hold on the city
+- If you pass through a hostile city, you may lose the /whole package/ with a probability depending on the enemy's hold on the city; if your package is not captured, however, you will lose nothing.
+
+An example print-out from the game:
+
+#+begin_src
+>>> send 2 5 10      # send <from> <to> <kgs>
+
+In node 3 lost 0.00%
+        Was hostile
+        Hold is 0.60
+
+In node 5 lost 15.22%
+        Was not hostile
+        Hold is 0.55
+
+Arrived at destination (5) with 8.48kg, lost 1.52kg on the way.
+Hold at 5 changed from 0.55 to 0.50(difference: -0.05)
+#+end_src
+
+In this example we send 10kg of drugs from city 2 to city 5.
+
+City 3, which is hostile, has a pretty low hold, hence it is not that likely that they will be able to capture the package (note: probability is $\bP (capture) = hold - (1 - hold)$). In this case they did not, and hence we lost nothing.
+
+City 5, our destination, has a pretty low hold too; so low that an impressive 15.22% of drugs "disappeared" during the transport in the city! Of course, our local family will not be pleased to receive less than they requested, and they will become more disloyal - the greater the drug loss, the more disloyal local families get. The result is that the hold in city 5 decreases by 0.05.
