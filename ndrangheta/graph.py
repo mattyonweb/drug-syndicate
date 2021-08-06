@@ -50,7 +50,8 @@ class Routing:
         Just a fancy print function for shipment movements.
         """
         town_name, is_hostile = town.name, town.family != my_family
-        
+
+        print(f"shipment_family={my_family}, this family={town.family}")
         print(f"In node {town.id} lost {100*(1-loss):.2f}%")
         print("\tWas " + ("" if is_hostile else "not ") + "hostile")
         print(f"\tHold is {town.hold:.2f}")
@@ -66,8 +67,6 @@ class Routing:
 
     
     def check_is_valid_shipment_geographically(self, t1, t2):
-        # if t1 == t2:
-        #     raise ShipmentError("Destination is the same as the source!")
         if t1.family != t2.family:
             raise ShipmentError(f"Destination is a place not owned by family {t1.family}")
 
@@ -98,24 +97,6 @@ class Routing:
         else:
             ship.displace(remaining_percent, end)
             return True
-        
-        # if town.family != my_family:
-        #     # hold = 1    => prob = 1
-        #     # hold = 0.75 => prob = 0.5
-        #     # hold = 0.50 => prob = 0
-        #     if not montecarlo(town.hold - (1 - town.hold)):
-        #         self.describe_shipment(town, 0, my_family)
-        #         # ship.displace(0, town)
-        #         return False
-            
-        #     self.describe_shipment(town, 1, my_family)
-        #     ship.displace(1, town)
-        #     return True
-        
-        # loss = random.uniform((1 + town.hold) / 2, 1)
-        # ship.displace(loss, town)
-        # self.describe_shipment(town, loss, my_family)
-        # return True
     
         
     def send_shipment_manual(self,
@@ -127,6 +108,9 @@ class Routing:
 
         assert(self.is_valid_shipment(start, end, ship))
 
+        print("*"*12)
+        print(f"SHIPMENT: {start} to {end}, {ship.kgs}kg\n")
+        
         town = Town.get(start)
         town.mail_shipment(ship)
         
@@ -137,6 +121,7 @@ class Routing:
 
             if not ok:
                 print(f"Failed to deliver, package captured in {town_id}! Lost {ship.kgs}kg!")
+                print("*"*12)
                 Town.get(town_id).capture_shipment(ship)
                 return 0
             
@@ -155,7 +140,7 @@ class Routing:
             f"Hold at {town.id} changed from {old_hold:.2f} to {new_hold:.2f}"
             f"(difference: {new_hold-old_hold:.2f})" 
         )
-        print()
+        print("*"*12)
         
         return ship.kgs
 
@@ -272,7 +257,8 @@ class AI:
 
                 self.s.router.send_shipment_safest(
                     fam.capital, r.author,
-                    Shipment(r.kgs, 80_000, r.author)
+                    # Shipment(r.kgs, 80_000, r.author)
+                    Shipment(r.kgs, 80_000, fam.id)
                 )
 
                 # fam.drug_requests.remove(r)
@@ -381,7 +367,8 @@ def play():
                     
             if s[0] == "send": #path
                 from_, to, amount = int(s[1]), int(s[2]), int(s[3])
-                ship = Shipment(amount, 80_000, to)
+                # ship = Shipment(amount, 80_000, to)
+                ship = Shipment(amount, 80_000, Town.get(from_).family)
                     
                 if sim.router.is_valid_shipment(from_, to, ship):
                     player.scheduled_operations.append(

@@ -50,7 +50,6 @@ class Family():
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
     def cancel_request(self, author: "TownID"):
-        print("AUTHOR", author)
         self.drug_requests = del_satisfying(
             self.drug_requests,
             lambda r: r.author == author
@@ -320,7 +319,6 @@ class Town():
  
         
     def receive_shipment(self, ship: "Shipment"):
-        print("RECEIVED SHIP")
         self.variate_drugs(ship.kgs)        
         self.local_family.receive_shipment(ship)
                                            
