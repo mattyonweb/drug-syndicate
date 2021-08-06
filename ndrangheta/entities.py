@@ -1,7 +1,7 @@
 from typing import *
 from dataclasses import dataclass
 
-from ndrangheta.utils import cap
+from ndrangheta.utils import cap, montecarlo
 
 import random
 
@@ -68,6 +68,7 @@ class LocalFamily:
 
         self.money = 0
         self.drug_cost_per_kg = 80_000 # TODO deve essere fornito dal package/master family
+        self.tax = 0.5 # TODO
         
         self.sent_request = False
 
@@ -85,7 +86,8 @@ class LocalFamily:
 
     def estimate_remaining_days(self):
         return self.town.drugs / (self.estimate_monthly_consumption() / 30)
-        
+
+    
     def sell_daily_doses(self) -> KG:
         # TODO: this function does two things simulatneously,
         # sell doses and change town hold. Safe to do both here?
@@ -102,7 +104,16 @@ class LocalFamily:
 
         self.money += self.drug_cost_per_kg * sold_kgs
         return sold_kgs
+
     
+    def receive_shipment(self, ship: "Shipment"):
+        """
+        To be called from Town() when Town() is destination of a shipment.
+        """
+        self.sent_request = False
+        self.drug_cost_per_kg = ship.price_per_kg
+
+        
     def evaluate_need_for_drug(self):
         if self.sent_request:
             # If already sent a request, dont do it again
@@ -120,6 +131,11 @@ class LocalFamily:
             )
 
             self.sent_request = True
+
+    def send_weekly_taxes_to_family(self):
+        # TODO
+        if self.town.hold <= 0.6:
+            pass
             
 # =========================================================== #
 
@@ -209,15 +225,34 @@ class Town():
         self.variate_drugs(- ship.initial_kgs)
 
         
-    def receive_shipment(self, ship: "Shipment", family_id: FamilyID,
-                         retail_multiplier=1):
+    def transit_shipment(self, ship: "Shipment") -> float:
+        """
+        Call this if shipment if transiting through this city.
+        Returns the percenteage loss.
+        """
+        if self.family != ship.from_family:
+            # hold = 1    => prob = 1
+            # hold = 0.75 => prob = 0.5
+            # hold = 0.50 => prob = 0
+            if not montecarlo(self.hold - (1 - self.hold)):
+                # self.describe_shipment(town, 0, my_family)
+                # ship.displace(0, town)
+                self.capture_shipment(ship)
+                return 0
+            
+            # self.describe_shipment(town, 1, my_family)
+            # ship.displace(1, town)
+            return 1.0
         
-        self.variate_drugs(ship.kgs)
-        self.local_family.sent_request = False
+        return random.uniform((1 + self.hold) / 2, 1)
+        # ship.displace(loss, town)
+        # self.describe_shipment(town, loss, my_family)
+ 
         
-        # TODO: qui ci sarà da verificare contratti e simili
-        # family = Family.get(family_id)
-        # family.money += ship.costed * retail_multiplier
+    def receive_shipment(self, ship: "Shipment"):
+        self.variate_drugs(ship.kgs)        
+        self.local_family.receive_shipment(ship)
+                                           
 
     def capture_shipment(self, ship: "Shipment"):
         self.variate_drugs(ship.kgs)

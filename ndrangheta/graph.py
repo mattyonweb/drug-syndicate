@@ -17,12 +17,16 @@ from typing import *
 class ShipmentError(Exception): pass
 
 class Shipment:
-    def __init__(self, kgs: float, costed: int, destination: TownID):
+    def __init__(self, kgs: float, retail_price_kg: float, author: FamilyID):
         self.kgs = kgs
         self.initial_kgs = kgs
-        
-        self.costed = costed
-        self.dest = destination
+
+        # TODO: semanticamente è scorretto chiamarlo price_per_kg; di fatto
+        # questo valore, quando il pacco raggiunge il destinatario, viene
+        # imposto come prezzo di vendita per TUTTE le compravendite di droga
+        # di quella famiglia
+        self.price_per_kg = retail_price_kg
+        self.from_family = author
 
         self.loss_history: List[Tuple[TownID, float]] = list()
         
@@ -76,33 +80,42 @@ class Routing:
             raise ShipmentError(f"Zero or below kgs of drugs scheduled ({ship.initial_kgs})")
 
     
-    def move_single(self, start: TownID, end: TownID, ship: Shipment, my_family: FamilyID) -> float:
+    def move_single(self, start_id: TownID, end_id: TownID, ship: Shipment) -> float:
         """
         Move a package from a city to the other.
         """
         
-        if end not in self.graph.adj[start]:
-            raise ShipmentError(f"Node {start} not adjacent to node {end}")
+        if end_id not in self.graph.adj[start_id]:
+            raise ShipmentError(f"Node {start_id} not adjacent to node {end_id}")
 
-        town = Town.get(end)
+        start, end = Town.get(start_id), Town.get(end_id)
 
-        if town.family != my_family:
-            # hold = 1    => prob = 1
-            # hold = 0.75 => prob = 0.5
-            # hold = 0.50 => prob = 0
-            if not montecarlo(town.hold - (1 - town.hold)):
-                self.describe_shipment(town, 0, my_family)
-                # ship.displace(0, town)
-                return False
-            
-            self.describe_shipment(town, 1, my_family)
-            ship.displace(1, town)
+        remaining_percent = start.transit_shipment(ship)
+        
+        self.describe_shipment(end, remaining_percent, ship.from_family)
+        if remaining_percent == 0:
+            return False
+        else:
+            ship.displace(remaining_percent, end)
             return True
         
-        loss = random.uniform((1 + town.hold) / 2, 1)
-        ship.displace(loss, town)
-        self.describe_shipment(town, loss, my_family)
-        return True
+        # if town.family != my_family:
+        #     # hold = 1    => prob = 1
+        #     # hold = 0.75 => prob = 0.5
+        #     # hold = 0.50 => prob = 0
+        #     if not montecarlo(town.hold - (1 - town.hold)):
+        #         self.describe_shipment(town, 0, my_family)
+        #         # ship.displace(0, town)
+        #         return False
+            
+        #     self.describe_shipment(town, 1, my_family)
+        #     ship.displace(1, town)
+        #     return True
+        
+        # loss = random.uniform((1 + town.hold) / 2, 1)
+        # ship.displace(loss, town)
+        # self.describe_shipment(town, loss, my_family)
+        # return True
     
         
     def send_shipment_manual(self,
@@ -117,11 +130,10 @@ class Routing:
         town = Town.get(start)
         town.mail_shipment(ship)
         
-        my_family = town.family
         from_node = path[0]
         
         for town_id in path[1:]: #NB: la prima iter sarà move(start, start)!
-            ok = self.move_single(from_node, town_id, ship, my_family)
+            ok = self.move_single(from_node, town_id, ship)
 
             if not ok:
                 print(f"Failed to deliver, package captured in {town_id}! Lost {ship.kgs}kg!")
@@ -134,7 +146,7 @@ class Routing:
         old_hold = town.hold
         new_hold = town.change_hold(ship.loss_percent())
 
-        town.receive_shipment(ship, my_family, retail_multiplier=1.1)  
+        town.receive_shipment(ship)  
             
         print(
             f"Arrived at destination ({town.id}) "
@@ -260,7 +272,7 @@ class AI:
 
                 self.s.router.send_shipment_safest(
                     fam.capital, r.author,
-                    Shipment(r.kgs, cost, r.author)
+                    Shipment(r.kgs, 80_000, r.author)
                 )
 
                 fam.drug_requests.remove(r)
@@ -363,7 +375,7 @@ def play():
                     
             if s[0] == "send": #path
                 from_, to, amount = int(s[1]), int(s[2]), int(s[3])
-                ship = Shipment(amount, -1, to)
+                ship = Shipment(amount, 80_000, to)
                     
                 if sim.router.is_valid_shipment(from_, to, ship):
                     player.scheduled_operations.append(

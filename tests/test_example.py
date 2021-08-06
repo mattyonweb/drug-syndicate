@@ -61,7 +61,7 @@ class TestSafeShipmentGraph(unittest.TestCase):
         self.family = Family.get(0)
         
     def test_01_cant_send_drugs_if_no_drug_in_city(self):       
-        s = Shipment(kgs=5, costed=10_000, destination=1)   
+        s = Shipment(kgs=5, retail_price_kg=10_000, author=0)   
 
         try:
             self.r.send_shipment_safest(0, 1, s)
@@ -78,7 +78,7 @@ class TestSafeShipmentGraph(unittest.TestCase):
             pass
 
     def test_03_cant_send_more_drug_than_owned(self):
-        s = Shipment(kgs=5, costed=10_000, destination=1)
+        s = Shipment(kgs=5, retail_price_kg=10_000, author=0)
         
         self.family.money = 1_000_000
         self.narcos.sell_drugs(3, self.family, dest=0)
@@ -93,13 +93,13 @@ class TestSafeShipmentGraph(unittest.TestCase):
         self.family.money = 1_000_000
         self.narcos.sell_drugs_immediately(3, self.family, dest=0)
         
-        s = Shipment(kgs=2.5, costed=10_000, destination=1)
+        s = Shipment(kgs=2.5, retail_price_kg=10_000, author=0)
         self.r.send_shipment_safest(0, 1, s)
         self.assertGreater(Town.get(1).drugs, 0)
         self.assertAlmostEqual(Town.get(0).drugs, 0.5)
 
         # Sends a second tranche of remmaining drugs
-        s = Shipment(kgs=0.5, costed=10_000, destination=1)
+        s = Shipment(kgs=0.5, retail_price_kg=10_000, author=0)
         self.r.send_shipment_safest(0, 1, s)
         self.assertAlmostEqual(Town.get(0).drugs, 0)
 

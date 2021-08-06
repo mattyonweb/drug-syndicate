@@ -42,6 +42,12 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         old_money = Town.get(0).local_family.money
         self.s.advance_time()
         self.assertGreater(Town.get(0).local_family.money, old_money)
+
+    def test_update_drug_retail_price_when_received_new_package(self):
+        ship = Shipment(2, 90_000, 0)
+        self.s.send_shipment(0, 1, ship)
+        self.s.advance_time()
+        self.assertEqual(ship.price_per_kg, Town.get(1).local_family.drug_cost_per_kg)
         
     
 class TestNextStep(unittest.TestCase):
