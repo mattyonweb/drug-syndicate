@@ -6,13 +6,21 @@
 #+LATEX_CLASS_OPTIONS: [a4paper]
 #+LATEX_HEADER: \input{$HOME/.emacs.d/latex-preamble.tex}
 
-* The core mechanic
+#+SETUPFILE: simple-inline.theme
+
+* The core ideas
 
 This game is built upon simple graph-theoretic ideas.
 
 The game map is represented as a graph: cities are nodes, while edges are roads that link two cities.
 
 A number of families controls subsets of the nodes; each family is subdivided in local families, one for each town they own.
+
+Your goal is to thrive in this hostile environment, by making fortunes selling drugs in you small, provincial criminal empire.
+
+* Mechanics
+
+** The world
 
 #+BEGIN_SRC dot :file 01-graph.png :cmdline -Kfdp -Tpng
     graph G {
@@ -44,21 +52,25 @@ A number of families controls subsets of the nodes; each family is subdivided in
 #+RESULTS:
 [[file:01-graph.png]]
 
-In this example, the number on each node is an ID for the city; the colors represents which family controls a given city. The three cities with black borders are the "capital" of each family.
+Here's a stylized view of the game world. The number on each node is the ID of the city; the colors represent which family controls a given city. The three cities with black borders are the "capital" of each family.
 
 ** Holding a city
 
-Organized crime is not (at least in this game) as monolithic as it may sound: the distributed nature of drug dealing imposes, in fact, to grant local families some degree of freedom.
+# Organized crime is not (at least in this game) as monolithic as it may sound: the distributed nature of drug dealing imposes, in fact, to grant local families some degree of freedom.
 
-If local families regularly receive the agreed amount of drug every month, you can be certain that the central family will have a strong hold even on the most periferical of its cities - that will produce great benefits, as we will see in a moment.
+Organized crime is not (at least in this game) as monolithic as it may sound: the distributed nature of drug dealing, in fact, induces local organizations to stray away from the mother family. It is your responsibility to keep local families loyal, and to mantain a strong *hold* on each city.
+
+If local families regularly receive the agreed amount of drug every month, you can be certain to have a strong hold even on the most periferical of your cities - that will produce great benefits when transporting drugs, as we will see in a moment.
 
 If, on the other end, shipments don't come in regularly, or they come "light", well, you will /have some unhappy people out there/.
 
 ** Drugs, and distribution thereof
 
-Drugs are first delivered, by sea or air, in the capital of each family. In this first phase, Narcos are responsible for transportation.
+The main way to accumulate capital is by selling drugs in complacent cities.
 
-Let's say then that city number 5 is low on drugs, and asks the main family for a re-up. The main family buys 10kg of drugs from the narcos, which are delivered in city number 2 (the capital).
+Drugs are first bought from Narcos at a fixed, wholesale price. If the negotiations with Narcos are succesful, the agreed quantity of drugs will be delivered the next day in your capital city. From there, you can send drugs to any friendly city who request it.
+
+Let's suppose that city number 5 (beige family) is low on drugs, and asks the main family for a re-up. The main family buys 10kg of drug from the narcos; the package will be delivered, next day, in city number 2 (the capital).
 
 #+BEGIN_SRC dot :file 01-path.png :cmdline -Kfdp -Tpng
   graph G {
@@ -92,16 +104,18 @@ Let's say then that city number 5 is low on drugs, and asks the main family for 
 #+RESULTS:
 [[file:01-path.png]]
 
-As you can see, the journey from city 2 to city 5 involves a passage through city 3, which is controlled by another family. The small numbers in these cities represent the /hold/ of the respective local families on each town: a value close to 1 indicates solid control, while values close to 0.5 represents lack of discipline and loyalty.
+As you can see, the journey from city 2 to city 5 involves a passage through city 3, which is controlled by another family. The small number in these cities represent the /hold/ of the respective local families on each town: a value close to 1 indicates solid control, while values close to 0.5 represents lack of discipline and loyalty.
 
 When you send a /package/ through a city, you should consider that, depending on the hold exerted, you will lose a percentage of you package: ya know, corruption, petty theft, showdowns and so on are pretty widespread in criminal organizations, even in towns with the most disciplined and loyal local detachments.
 
-In other words, in each town you package will pass through, you will lose a small or big percenteage of you package; the general rules are:
+In each town your package will pass through, you may lose a small or big percenteage of drugs depending on:
 
 - If you pass through a frendly city, you will lose a percenteage linearly dependent on your hold on the city
 - If you pass through a hostile city, you may lose the /whole package/ with a probability depending on the enemy's hold on the city; if your package is not captured, however, you will lose nothing.
 
-An example print-out from the game:
+*** In-game view
+
+The following is an example print-out from the game, representing the shipment described above:
 
 #+begin_src
 >>> send 2 5 10      # send <from> <to> <kgs>
@@ -118,8 +132,44 @@ Arrived at destination (5) with 8.48kg, lost 1.52kg on the way.
 Hold at 5 changed from 0.55 to 0.50(difference: -0.05)
 #+end_src
 
-In this example we send 10kg of drugs from city 2 to city 5.
+We send 10kg of drugs from city 2 to city 5.
 
-City 3, which is hostile, has a pretty low hold, hence it is not that likely that they will be able to capture the package (note: probability is $\bP (capture) = hold - (1 - hold)$). In this case they did not, and hence we lost nothing.
+City 3, which is hostile, has a pretty low hold, hence it is not that likely that they will be able to capture the package (note: probability is $\mathbb{P}(capture) = hold - (1 - hold)$). In this case they did not, and hence we lost nothing.
 
-City 5, our destination, has a pretty low hold too; so low that an impressive 15.22% of drugs "disappeared" during the transport in the city! Of course, our local family will not be pleased to receive less than they requested, and they will become more disloyal - the greater the drug loss, the more disloyal local families get. The result is that the hold in city 5 decreases by 0.05.
+City 5, our destination, has a pretty low hold too; so low that an impressive 15.22% of drugs "disappeared" during the transport in the city!
+
+Of course, our local family will not be pleased to receive less drugs than they requested, and they will grow (more) disloyal - the greater the drug loss, the more disloyal local families get. The result is that the hold in city 5 decreases by 0.05, down to the minimum value of 0.50.
+
+* Technical matters
+
+The game is written in Python because it is the language I know better and the faster one to write prototypes in. Of course, I will never want to re-write the game in another language (eg. Rust), so Python will probabily be the eternal language for this game.
+
+Python is also nice as it lends pretty nicely to external scripting. I would like to have a command line interface which can be interacted with by means of an external program. This by the way is just wishful thinking now!
+
+* Where can you find it
+
+Here!
+
+
+
+
+* Where to go from here
+
+** Concrete police
+
+Police is just another family up to now (well, a family which doesn't /deal/).
+
+It would be fun to add /informants/: if a package is captured on a city controlled by the police, a snitch will infiltrate the family (unbeknownst to the player, obviously). If these informants are not discovered within a certain amount of time, the family will undergo an investigation and hence a trial; the hold in every city will be halved, and many other bad things could happen.
+
+** Mafia wars
+
+Up to now, the map is pretty static; it would be more fun to have the possibility to conquer (and therefore also lose!) cities when eg. the suffer from a low hold. This mechanism is extremely vital for making the game fun to play, but I would first try to strengthen the core game mecahnics before implementing this.
+
+
+** Build an efficient AI
+
+Not an easy task, but something basic could be quickly doable. I'm a bit afraid that I will fine-tune to much the mechanisms of the AI, resulting in added complexity when in the future I will need to modify such AI. A (very basic, and bugged) AI is currently shipped with the game.
+
+** GUI?
+
+The game is turn-based, which lends very well to implementing multiplayer features -- sadly, the majority of people who may like this game would not particularly enjoy a command line interface. Some kind of web-server could host games, but in that case we would need a web-based GUI.  
