@@ -240,11 +240,17 @@ class AI:
         if family_id == -1 or len(fam.drug_requests) == 0:
             return
 
+        print(f"AI {family_id}")
+        for r in fam.drug_requests:
+            print(r)
+
         # Per ora:
         # 1. Una richiesta per turno esaudita
         # 2. Priorità a quelle con days_withinig minore
-        
-        sorted_reqs = sorted(fam.drug_requests, key=lambda r: r.needed_before)
+        sorted_reqs = sorted(
+            fam.drug_requests,
+            key=lambda r: (r.needed_before, -r.kgs)
+        )
         
         # Provo tutte le richieste; la prima che posso esaudire, la esaudisco;
         # do priorità a quelle più urgenti.
@@ -253,6 +259,7 @@ class AI:
             cost = self.s.ask_drug_price_to_narcos(r.kgs)
             
             if fam.money > cost:
+                print("CHOSEN: ", r)
                 self.s.buy_from_narcos(family_id, r.kgs, fam.capital, immediate=True)
 
                 self.s.router.send_shipment_safest(

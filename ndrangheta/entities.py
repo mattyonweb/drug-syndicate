@@ -110,16 +110,22 @@ class LocalFamily:
         #TODO: add randomness on number of self.regulars
         return self.regular_dose * self.regulars * (self.town.population / 1000)
 
-    def avg_monthly_saltuar_dose(self) -> KG:
-        return self.salutar_dose * self.saltuary * (self.town.population / 1000)
+    # def avg_monthly_saltuar_dose(self) -> KG:
+    #     return self.salutar_dose * self.saltuary * (self.town.population / 1000)
 
+    def avg_daily_saltuar_dose(self) -> KG:
+        return (self.salutar_dose * self.saltuary * (self.town.population / 1000)) / 30
+    
     def estimate_monthly_consumption(self) -> KG:
         return int( #30 = 30 days
-            30 * self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose()
-        ) + 2 * self.avg_daily_regular_dose() # just for safety
+            30 * self.avg_daily_regular_dose() + 30 * self.avg_daily_saltuar_dose()
+        ) + 5*self.avg_daily_regular_dose() # just for safety
 
+    def estimate_daily_consumption(self):
+        return self.avg_daily_regular_dose() + self.avg_daily_saltuar_dose()
+    
     def estimate_remaining_days(self):
-        return self.town.drugs / (self.estimate_monthly_consumption() / 30)
+        return self.town.drugs / self.estimate_daily_consumption()
 
     
     def sell_daily_doses(self) -> KG:
@@ -127,12 +133,25 @@ class LocalFamily:
         # sell doses and change town hold. Safe to do both here?
         remaining_days = self.estimate_remaining_days()
 
+        if self.town.family != 0:
+            print(self.town.id, end=" ")
+            
         if remaining_days > 5:
-            sold_kgs = self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose() / 30
+            sold_kgs = self.estimate_daily_consumption()
+            print("OOOOOOOOK", remaining_days, self.town.drugs,
+                  sold_kgs, self.estimate_daily_consumption())
+            
         elif remaining_days > 1:
             self.town.hold = cap(self.town.hold - 0.01, 0.5, 1)
-            sold_kgs = 0.5 * (self.avg_daily_regular_dose() + self.avg_monthly_saltuar_dose() / 30)
+            sold_kgs = max(
+                0.5 * (self.avg_daily_regular_dose() + self.avg_daily_saltuar_dose()),
+                self.town.drugs
+            )
+            print("WARNING", remaining_days, self.town.drugs, sold_kgs)
+            
         else:
+            if self.town.family != 0:
+                print("CRITICAL", remaining_days, self.town.drugs)
             self.town.hold = cap(self.town.hold - 0.05, 0.5, 1)
             sold_kgs = 0
 
@@ -274,14 +293,15 @@ class Town():
         return self.hold
 
 
-    def variate_drugs(self, amount: int):
+    def variate_drugs(self, amount: int, reason:str=""):
         """
         Change amount of drugs in a city by a delta.
         """
         self.drugs += amount
         
         assert self.drugs >= 0, (f"Drugs under 0 in city {self.id}; "
-                                 f"was {self.drugs + amount}, removed {amount}")
+                                 f"was {self.drugs - amount}, removed {amount}"
+                                 f" - reason: {reason}")
 
         # TODO: fatto += a destinazione, ma fatto anche -= alla partenza?
         Family.get(self.family).drugs += amount
@@ -291,7 +311,7 @@ class Town():
         """
         Call this on the starting city of a shipment.
         """
-        self.variate_drugs(- ship.initial_kgs)
+        self.variate_drugs(- ship.initial_kgs, reason="Started shipment")
 
         
     def transit_shipment(self, ship: "Shipment") -> float:
@@ -319,19 +339,20 @@ class Town():
  
         
     def receive_shipment(self, ship: "Shipment"):
-        self.variate_drugs(ship.kgs)        
+        self.variate_drugs(ship.kgs, reason="ship reached destination")        
         self.local_family.receive_shipment(ship)
                                            
 
     def capture_shipment(self, ship: "Shipment"):
-        self.variate_drugs(ship.kgs)
+        self.variate_drugs(ship.kgs, reason="ship captured!")
         self.local_family.evaluate_need_for_drug()
         # TODO: ci starebbe tipo che aumenta (o diminuisce?) la hold?
 
     # =========================================================== #
     
     def consume_drugs_single_day(self):
-        self.variate_drugs(- self.local_family.sell_daily_doses())
+        self.variate_drugs(- self.local_family.sell_daily_doses(),
+                           reason="daily drug use")
         
     def advance_turn(self):
         if self.family == -1:
