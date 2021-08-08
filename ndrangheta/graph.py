@@ -315,9 +315,23 @@ class Simulator:
         self.ai = AI(self)
         self.turn = 0
 
+    def update_graph(self):
+        for tid, t in Town.TOWNS.items():
+            nx.set_node_attributes(
+                self.router.graph,
+                {tid: {k:v for k,v in t.__dict__.items() if k not in ["local_family"]}}
+            )
+        
     def save_graph(self, fpath):
+        self.update_graph()
         show(self.router.graph, False, True, fpath="web/map.svg")
-                
+
+    def show_graph(self):
+        self.update_graph()
+        show(self.router.graph)
+
+    # =========================================================== #
+    
     def advance_time(self, turns=1):
         for _ in range(turns):
             for _, town in Town.TOWNS.items():
@@ -373,8 +387,7 @@ class Simulator:
         if t1.family == t2.family:
             raise WarError("Can't declare war between two friendly city!")
         if t2.hold > 0.7:
-            raise WarError("Can't declare war if hold in defender is >0.7!")
-        
+            raise WarError("Can't declare war if hold in defender is >0.7!")        
         # TODO: controlla che città siano dirimpettaie 
         
         def defense_factor(t):
@@ -387,7 +400,21 @@ class Simulator:
         
         if atk_val > def_val:
             if t2.is_capital:
-                raise WarError("Capturing capital not implemented!")
+                del Family.FAMILIES[t2.family]
+                    
+                towns = [t for t in Town.TOWNS.values() if t.family==t2.family]
+
+                for t in towns:
+                    if t == t2:
+                        continue
+                    f = Family(None, "")
+                    fam_id = f.id
+                    t.change_family(fam_id)
+                    t.change_hold(loss_percent=100)
+                    t.is_capital = True
+                    f.capital = t.id
+                    
+                # raise WarError("Capturing capital not implemented!")
 
             t2.change_family(t1.family)
 
@@ -439,7 +466,8 @@ def play():
                 sim.save_graph(0)
                 
             if s[0] == "show":
-                show(sim.router.graph)
+                # show(sim.router.graph)
+                sim.show_graph()
 
             if s[0] == "drug" and s[1].startswith("p"):
                 print(f"Currently sold at {sim.ask_drug_price_to_narcos():n}€ / kg")
@@ -483,10 +511,17 @@ def play():
                 
                 for r in Family.get(f_id).drug_requests:
                     print(r)
-                        
+
+            if s[0] == "w":
+                t1, t2 = int(s[1]), int(s[2])
+                sim.declare_war(t1, t2)
+                
             if s[0] == "q":
                 break
 
+            if s[0] == "d":
+                breakpoint()
+                
             if s[0] == "t":
                 t = int(s[1]) if len(s) == 2 else 1
                 sim.advance_time(turns=t)

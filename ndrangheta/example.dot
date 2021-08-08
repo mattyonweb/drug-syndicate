@@ -14,12 +14,12 @@
     0 [fillcolor=bisque, family=0, pop=10]
     1 [fillcolor=bisque, family=0, pop=10]
     2 [label=<2<br/><font point-size="7">0.9</font>>, fillcolor=bisque, family=0, pop=60, capital=t, hold=0.9, color=black]
-    5 [label=<5<br/><font point-size="7">0.6</font>>, fillcolor=bisque, family=0, pop=50, hold=0.6]
+    5 [label=<5<br/><font point-size="7">0.6</font>>, fillcolor=bisque, family=0, pop=50, hold=0.6, soldiers=20, leader=4]
 
-    3 [label=<3<br/><font point-size="7">0.7</font>>, fillcolor=lightskyblue1, family=1, hold=0.7]
+    3 [label=<3<br/><font point-size="7">0.7</font>>, fillcolor=lightskyblue1, family=1, hold=0.5, soldiers=10, capital=t]
     4 [fillcolor=lightskyblue1, family=1]
     6 [fillcolor=lightskyblue1, family=1]
-    7 [fillcolor=lightskyblue1, family=1, hold=0.95, capital=t, color=black]
+    7 [fillcolor=lightskyblue1, family=1, hold=0.95, color=black]
 
     8 [fillcolor=grey, family=-1, capital=t, color=black]
 

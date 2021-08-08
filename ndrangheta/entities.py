@@ -22,6 +22,8 @@ class Family():
     FAMILIES: Dict[FamilyID, "Family"] = dict()
 
     def __init__(self, id: FamilyID, name):
+        if id is None:
+            id = max(Family.FAMILIES) + 1
         assert(id not in Family.FAMILIES)
         
         self.name = name
@@ -291,6 +293,7 @@ class Town():
         if not am_hostile:
             s += f"- Drugs: {self.drugs:.2f}kg "
             s += f"- Taxes: {100*self.local_family.tax:.0f}% "
+            s += f"- Army: {self.local_family.soldiers} ({self.local_family.leader}) "
             
         if self.id == Family.get(self.family).capital:
             s += f"- CAPITAL "
@@ -306,7 +309,7 @@ class Town():
             if exclude_others and t.family != family_id:
                 continue
 
-            print(t.str_stats(t.family == family_id))
+            print(t.str_stats(t.family != family_id))
 
             
     def change_family(self, new_family: "FamilyID"):

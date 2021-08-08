@@ -57,3 +57,15 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         
     def test_soldiers_variation(self):
         pass #?
+
+    def test_conquer_capital(self):
+        from collections import Counter
+        self.s.declare_war(0, 7)
+        
+        c = Counter([t.family for t in Town.TOWNS.values()])
+        self.assertTrue(
+            len([x for x in c if c[x] >= 2]) == 1
+        )
+        self.assertTrue(
+            all(x > 0 for x in c.values())
+        )
