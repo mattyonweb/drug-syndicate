@@ -1,0 +1,10 @@
+graph G {
+
+  0 -- 1 -- 2 -- 3
+
+  0 [label=A0, family=0, hold=1.0, drugs=10, capital=t];
+  1 [label=B1, family=1, hold=0.5, capital=t];
+  2 [label=A2, family=0, hold=1.0, drugs=10];
+  3 [label=A3, family=0, hold=0.5];
+  4 [label=A4, family=0, hold=0.75];
+}

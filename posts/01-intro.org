@@ -1,4 +1,4 @@
-#+TITLE: Introduction 
+#+TITLE: 01 - What is Drug Syndicate? 
 #+AUTHOR: Jacopo Bolbo
 #+EMAIL: cvd00@insicuri.net
 
@@ -148,9 +148,7 @@ Python is also nice as it lends pretty nicely to external scripting. I would lik
 
 * Where can you find it
 
-Here!
-
-
+[[https://github.com/mattyonweb/drug-syndicate][github]]!
 
 
 * Where to go from here

@@ -22,17 +22,23 @@ def cap(value, low, high):
     return value
 
 
-def show(g):
+def show(g, show=True, save=False, fpath=None):
     """
     Shows a graph.
     """
+    import matplotlib.pyplot as plt
+    f = plt.figure()
+
     n_colors = [
         g.nodes()[n]["family"] for n in g.nodes()
     ]
     
     draw(g, with_labels=True, cmap="Pastel1", node_color=n_colors)
-    
-    show_()
+
+    if show:
+        show_()
+    if save:
+        f.savefig(fpath)
 
 
 def del_satisfying(l: List, f: Callable):

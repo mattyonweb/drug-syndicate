@@ -228,7 +228,7 @@ class LocalFamily:
 TownID = int
 
 class Town():
-    NAMES = open("ndrangheta/calabria.txt", "r").readlines()
+    # NAMES = open("ndrangheta/calabria.txt", "r").readlines()
     TOWNS: Dict[TownID, "Town"] = dict()
     
     def __init__(self, town_id: TownID, family_id: FamilyID, **kwargs):        
@@ -237,7 +237,8 @@ class Town():
         self.id:     TownID   = town_id
         self.family: FamilyID = family_id
         
-        self.name: str   = Town.NAMES[self.id]
+        # self.name: str   = Town.NAMES[self.id]
+        self.name: str   = ""
         self.hold: float = (
             random.uniform(0.5, 1)
             if kwargs["hold"] is None
@@ -324,18 +325,12 @@ class Town():
             # hold = 0.75 => prob = 0.5
             # hold = 0.50 => prob = 0
             if not montecarlo(self.hold - (1 - self.hold)):
-                # self.describe_shipment(town, 0, my_family)
-                # ship.displace(0, town)
                 self.capture_shipment(ship)
                 return 0
-            
-            # self.describe_shipment(town, 1, my_family)
-            # ship.displace(1, town)
+
             return 1.0
         
         return random.uniform((1 + self.hold) / 2, 1)
-        # ship.displace(loss, town)
-        # self.describe_shipment(town, loss, my_family)
  
         
     def receive_shipment(self, ship: "Shipment"):

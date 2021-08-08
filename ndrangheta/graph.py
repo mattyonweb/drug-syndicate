@@ -89,9 +89,11 @@ class Routing:
 
         start, end = Town.get(start_id), Town.get(end_id)
 
-        remaining_percent = start.transit_shipment(ship)
+        remaining_percent = end.transit_shipment(ship)
+        # remaining_percent = start.transit_shipment(ship)
         
         self.describe_shipment(end, remaining_percent, ship.from_family)
+        
         if remaining_percent == 0:
             return False
         else:
@@ -183,6 +185,36 @@ class Routing:
             self.safest_path(start, end)
         )
 
+    
+    def best_approximate_path(self, start_id, end_id):
+        """
+        Calculates the path with best expected value
+        """
+        start, end = Town.get(start_id), Town.get(end_id)
+        self.check_is_valid_shipment_geographically(start, end)
+
+        my_family = start.family
+        
+        def node_heuristic(__, t_id2, _):
+            t2 = Town.get(t_id2)
+
+            if t2.family != my_family:
+                # E[multiplier in A->B] = E[Uniform(hold(B), 1)]
+                # = (1 + hold(B)) / 2
+                v = (1 + t2.hold) / 2
+            else:
+                # hold = 1   => v = 0 => impossible to pass
+                # hold = 0.5 => v = 1 => no risk passing
+                v = 2 * (1 - t2.hold)                
+
+            return v
+            
+        return nx.dijkstra_path(
+            self.graph,
+            start_id, end_id,
+            weight=node_heuristic
+        )
+    
 # =========================================================== #
 
 class DrugError(Exception): pass
@@ -283,7 +315,9 @@ class Simulator:
         self.ai = AI(self)
         self.turn = 0
 
-
+    def save_graph(self, fpath):
+        show(self.router.graph, False, True, fpath="web/map.svg")
+                
     def advance_time(self, turns=1):
         for _ in range(turns):
             for _, town in Town.TOWNS.items():
@@ -349,6 +383,9 @@ def play():
 
             s = input("λ) ").split(" ")
 
+            if s[0] == "save":
+                sim.save_graph(0)
+                
             if s[0] == "show":
                 show(sim.router.graph)
 
