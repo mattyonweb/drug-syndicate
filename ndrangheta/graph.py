@@ -390,9 +390,18 @@ class Simulator:
                 raise WarError("Capturing capital not implemented!")
 
             t2.change_family(t1.family)
+            
+            t1.local_family.variate_leader(+0.5)
+            t2.local_family.variate_leader(1, override=True)
 
+            t2.hold = 0.7
+            t1.hold += 0.08
         else:
-            pass
+            t1.local_family.variate_leader(-1)
+            t2.local_family.variate_leader(+1)
+
+            t2.hold = 0.7
+            t1.hold -= 0.08
             
 # =========================================================== #
 

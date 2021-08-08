@@ -110,7 +110,15 @@ class LocalFamily:
         tax_money = self.tax * self.money
         self.money -= tax_money
         self.parent.receive_tax(self.town.id, tax_money)
-        
+
+
+    def variate_leader(self, val, override=False):
+        if override:
+            self.leader = val
+        else:
+            self.leader += val
+
+            
     def avg_daily_regular_dose(self) -> KG:
         #TODO: add randomness on number of self.regulars
         return self.regular_dose * self.regulars * (self.town.population / 1000)
@@ -300,10 +308,14 @@ class Town():
 
             print(t.str_stats(t.family == family_id))
 
+            
     def change_family(self, new_family: "FamilyID"):
         self.family = new_family
+        self.local_family.parent = Family.FAMILIES[self.family]
         #TODO: e se prima questa città era una capitale?
-                
+        #TODO: e se diventa una città indipendente (ie. Fam.FAM[id] non esiste)?
+
+        
     def change_hold(self, loss_percent: float) -> float:
         if loss_percent <= 5:
             self.hold = cap(self.hold * 1.12, 0.5, 1)
