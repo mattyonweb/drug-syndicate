@@ -390,18 +390,34 @@ class Simulator:
                 raise WarError("Capturing capital not implemented!")
 
             t2.change_family(t1.family)
+
+            t1.local_family.soldiers = (
+                round((atk_val - def_val) / t1.local_family.leader)
+            )
+            t2.local_family.soldiers = (
+                random.randint(0, t2.local_family.soldiers // 4)
+            )
             
             t1.local_family.variate_leader(+0.5)
             t2.local_family.variate_leader(1, override=True)
 
             t2.hold = 0.7
             t1.hold += 0.08
+
+            
         else:
             t1.local_family.variate_leader(-1)
             t2.local_family.variate_leader(+1)
 
             t2.hold = 0.7
             t1.hold -= 0.08
+
+            t2.local_family.soldiers = (
+                round((def_val - atk_val) / t2.local_family.leader)
+            )
+            t1.local_family.soldiers = (
+                random.randint(0, t1.local_family.soldiers // 4)
+            )
             
 # =========================================================== #
 

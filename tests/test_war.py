@@ -54,3 +54,6 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         self.assertEqual(Town.get(0).hold, h0-0.08)
         self.assertEqual(Town.get(6).hold, 0.7)
 
+        
+    def test_soldiers_variation(self):
+        pass #?
