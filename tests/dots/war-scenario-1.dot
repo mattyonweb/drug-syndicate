@@ -1,0 +1,9 @@
+graph G {
+
+  0 -- 1 -- 2;
+
+  0 [label=A0, family=0, capital=t, pop=70, soldiers=50, leader=1];
+  1 [label=A0, family=1, pop=40, soldiers=60, leader=2]; // will be discarded, as solder > pop
+  2 [label=A0, family=1, capital=t];
+
+}

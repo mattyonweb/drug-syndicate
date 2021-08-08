@@ -292,7 +292,7 @@ class AI:
             
             if fam.money > cost:
                 print("CHOSEN: ", r)
-                self.s.buy_from_narcos(family_id, r.kgs, fam.capital, immediate=True)
+                self.s.buy_from_narcos(family_id, r.kgs, immediate=True)
 
                 self.s.router.send_shipment_safest(
                     fam.capital, r.author,
@@ -341,10 +341,9 @@ class Simulator:
             return
 
 
-    def buy_from_narcos(self, family_id, kgs,
-                        dest: TownID, immediate=False) -> Union[Tuple[Callable, KG], None]:
-    
+    def buy_from_narcos(self, family_id, kgs, immediate=False) -> Union[Tuple[Callable, KG], None]:
         family = Family.get(family_id)
+        dest   = family.capital
 
         if immediate:
             return self.narcos.sell_drugs_immediately(kgs, family, dest)
@@ -405,7 +404,7 @@ def play():
 
                 # Scala i soldi, delivera la droga solo il giorno dopo
                 if Ask.confirm():
-                    operation = sim.buy_from_narcos(player_id, amount, dest)
+                    operation = sim.buy_from_narcos(player_id, amount)
                     player.scheduled_operations.append(operation)
                     
                     

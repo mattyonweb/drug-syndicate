@@ -40,7 +40,7 @@ class Family():
     @staticmethod
     def get(id: FamilyID):
         return Family.FAMILIES[id]
-
+        
     def stats(self, turn=None):
         if turn is None:
             print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
@@ -49,6 +49,7 @@ class Family():
         
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
+        
     def cancel_request(self, author: "TownID"):
         self.drug_requests = del_satisfying(
             self.drug_requests,
@@ -80,7 +81,7 @@ class Police(Family):
     
 
 class LocalFamily:
-    def __init__(self, parent: Family, town: "Town"):
+    def __init__(self, parent: Family, town: "Town", soldiers:int, leader: int):
         self.parent = parent
         self.town   = town
         
@@ -92,10 +93,14 @@ class LocalFamily:
         self.money = 0
         self.drug_cost_per_kg = 80_000 # TODO deve essere fornito dal package/master family
         self.tax: float = 0.5 # TODO
+
+        self.soldiers = soldiers
+        self.leader   = leader
         
         self.sent_request = False
         self.futures = [Schedule(self.pay_taxes, Every(turn=7, countdown=7))]
         self.turn = 0
+
 
     def change_tax_rate(self, new_tax: float):
         assert(new_tax >= 0)
@@ -249,7 +254,12 @@ class Town():
             else random.randint(1, 100) * 1000
         )
 
-        self.local_family = LocalFamily(Family.get(self.family), self)        
+        self.local_family = LocalFamily(
+            parent=Family.get(self.family),
+            town=self,
+            soldiers=min(kwargs["soldiers"], self.population // 1000),
+            leader=kwargs["leader"]
+        )
         self.drugs = kwargs["drugs"] if self.family != -1 else 0 
         
         Town.TOWNS[self.id] = self
@@ -264,6 +274,20 @@ class Town():
     def get_of_family(id: FamilyID):
         return [t for t in Town.TOWNS.values() if t.family == id]
 
+
+    def str_stats(self, am_hostile) -> str:
+        s = ""
+        s += f"({self.id})\t - Family: {self.family} - Hold: {self.hold:.2f} "
+
+        if not am_hostile:
+            s += f"- Drugs: {self.drugs:.2f}kg "
+            s += f"- Taxes: {100*self.local_family.tax:.0f}% "
+            
+        if self.id == Family.get(self.family).capital:
+            s += f"- CAPITAL "
+
+        return s
+
     
     @staticmethod
     def print_cities(family_id, exclude_others=False):
@@ -272,15 +296,8 @@ class Town():
 
             if exclude_others and t.family != family_id:
                 continue
-            
-            print(f"({t.id})\t - Family: {t.family} - Hold: {t.hold:.2f}", end=" ")
-            if t.family == family_id:
-                print(f"- Drugs: {t.drugs:.2f}kg", end=" ")
-                print(f"- Taxes: {100*t.local_family.tax:.0f}%", end=" ")
-            if tid == Family.get(t.family).capital:
-                print(f"- CAPITAL", end=" ")
 
-            print()
+            print(t.str_stats(t.family == family_id))
 
                 
     def change_hold(self, loss_percent: float) -> float:

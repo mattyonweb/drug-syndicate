@@ -33,4 +33,15 @@ class TestSafePathGraph(unittest.TestCase):
         self.assertEqual(Town.get(2).drugs, 0)
         self.assertEqual(Town.get(3).drugs, 0)
 
+    def test_war_attributes(self):
+        g = load_graph("tests/dots/war-scenario-1.dot")
+
+        self.assertEqual(Town.get(0).local_family.soldiers, 50)
+        self.assertEqual(Town.get(1).local_family.soldiers, 40)
+        
+        self.assertEqual(Town.get(0).local_family.leader, 1)
+        self.assertEqual(Town.get(1).local_family.leader, 2)
+
+        
+
         
