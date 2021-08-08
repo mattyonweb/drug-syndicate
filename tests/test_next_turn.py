@@ -85,7 +85,7 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
 
         self.assertTrue(any(r.author == 0 for r in Family.get(0).drug_requests))
 
-        self.s.buy_from_narcos(family_id=0, kgs=10, dest=0, immediate=True)
+        self.s.buy_from_narcos(family_id=0, kgs=10, immediate=True)
         self.assertEqual(town.drugs, 10)
         
         self.s.advance_time()

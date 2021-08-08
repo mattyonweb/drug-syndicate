@@ -57,16 +57,16 @@ def load_graph(fpath="ndrangheta/example.dot"):
             else:
                 Family(family, str(family))
 
-        Town(n, family,
-             hold=node["hold"], pop=node["pop"], drugs=node["drugs"],
-             soldiers=node["soldiers"], leader=node["leader"])
+        t = Town(n, family,
+                 hold=node["hold"], pop=node["pop"], drugs=node["drugs"],
+                 soldiers=node["soldiers"], leader=node["leader"], capital=node["capital"])
         
         if node["capital"]:
             Family.get(family).capital = n
-
+            
     # Sanity checks:
     for f in Family.FAMILIES.values():
         if f.capital is None:
             raise Exception(f"Family {f.id} has no capital!")
-
+        
     return g

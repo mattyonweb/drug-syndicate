@@ -365,7 +365,35 @@ class Simulator:
         
     def change_tax(self, player_id: FamilyID, city: TownID, amount: float):
         Family.get(player_id).change_tax_in(city, amount)
+
         
+    def declare_war(self, tid1: TownID, tid2: TownID):
+        t1, t2 = Town.get(tid1), Town.get(tid2)
+
+        if t1.family == t2.family:
+            raise WarError("Can't declare war between two friendly city!")
+        if t2.hold > 0.7:
+            raise WarError("Can't declare war if hold in defender is >0.7!")
+        
+        # TODO: controlla che città siano dirimpettaie 
+        
+        def defense_factor(t):
+            return 2 ** ((t.hold - 0.6) * 10)
+        
+        atk_val = t1.local_family.soldiers * t1.local_family.leader
+        def_val = t2.local_family.soldiers * t2.local_family.leader * defense_factor(t2)
+
+        print(atk_val, def_val)
+        
+        if atk_val > def_val:
+            if t2.is_capital:
+                raise WarError("Capturing capital not implemented!")
+
+            t2.change_family(t1.family)
+
+        else:
+            pass
+            
 # =========================================================== #
 
 def play():

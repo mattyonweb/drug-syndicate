@@ -52,6 +52,7 @@ def del_satisfying(l: List, f: Callable):
 class GenericMafiaException(Exception): pass
 class ViolationError(GenericMafiaException): pass
 class ValueError__(GenericMafiaException): pass
+class WarError(GenericMafiaException): pass
 
 def my_assert(cond: bool, exception: Exception):
     if not cond:

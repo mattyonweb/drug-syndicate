@@ -241,6 +241,7 @@ class Town():
         
         self.id:     TownID   = town_id
         self.family: FamilyID = family_id
+        self.is_capital = kwargs["capital"]
         
         # self.name: str   = Town.NAMES[self.id]
         self.name: str   = ""
@@ -299,6 +300,9 @@ class Town():
 
             print(t.str_stats(t.family == family_id))
 
+    def change_family(self, new_family: "FamilyID"):
+        self.family = new_family
+        #TODO: e se prima questa città era una capitale?
                 
     def change_hold(self, loss_percent: float) -> float:
         if loss_percent <= 5:
