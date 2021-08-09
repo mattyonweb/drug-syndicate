@@ -43,7 +43,11 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
                 1,
                 delta=0.01
             )
-
+            
+    def test_friendly_but_disloyal_transit(self):
+        g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(g)
+        
         # passaggio su città nemica ma poco leale
         for _ in range(100):
             ship = self.random_ship(0)
@@ -53,7 +57,11 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
                 1,
                 delta=0.01
             )
-
+            
+    def test_hostile_and_loyal_transit(self):
+        g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(g)
+        
         # passaggio su città nemica molto leale
         for _ in range(100):
             ship = self.random_ship(1)
@@ -64,9 +72,13 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
                 delta=0.01
             )
 
+    def test_higher_loyalty_means_higher_drugs(self):
+        g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(g)
+
         # In media città (amiche) con hold alto mantengono più droga ad ogni passaggio
         mult_3, mult_4 = 0, 0
-        for _ in range(100):
+        for _ in range(10):
             ship = self.random_ship(0)
 
             mult_3 += Town.get(3).transit_shipment(ship)

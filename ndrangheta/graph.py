@@ -49,9 +49,9 @@ class Routing:
         """
         Just a fancy print function for shipment movements.
         """
-        town_name, is_hostile = town.name, town.family != my_family
+        town_name, is_hostile = town.name, town.family.id != my_family
 
-        print(f"shipment_family={my_family}, this family={town.family}")
+        # print(f"shipment_family={my_family}, this family={town.family.id}")
         print(f"In node {town.id} lost {100*(1-loss):.2f}%")
         print("\tWas " + ("" if is_hostile else "not ") + "hostile")
         print(f"\tHold is {town.hold:.2f}")
@@ -68,7 +68,7 @@ class Routing:
     
     def check_is_valid_shipment_geographically(self, t1, t2):
         if t1.family != t2.family:
-            raise ShipmentError(f"Destination is a place not owned by family {t1.family}")
+            raise ShipmentError(f"Destination is a place not owned by family {t1.family.id}")
 
         
     def check_is_valid_shipment_drug_wise(self, t1, _, ship):
@@ -110,6 +110,7 @@ class Routing:
 
         assert(self.is_valid_shipment(start, end, ship))
 
+        print()
         print("*"*12)
         print(f"SHIPMENT: {start} to {end}, {ship.kgs}kg\n")
         
@@ -230,10 +231,10 @@ class Narcos():
         Firstly, narcos gets all the money (sell_drugs()); then, at the next turn,
         the family will be delivered the drugs (deliver_drugs()).
         """
-        if Town.get(dest).family != family.id:
+        if Town.get(dest).family.id != family.id:
             raise ShipmentError("Destination is of a different family!")
         
-        money_needed = kgs * self.get_price()
+        money_needed = int(kgs * self.get_price())
 
         if family.money < money_needed:
             raise DrugError(f"{money_needed:n}$ needed, but you only have {family.money:n}")
@@ -248,8 +249,8 @@ class Narcos():
         
     def sell_drugs_immediately(self, kgs: int, family: Family, dest: TownID):
         return self.sell_drugs(kgs, family, dest)()
-        # return op[0](*op[1:])
-
+        
+# =========================================================== #
     
 class Ask():
     @staticmethod
@@ -272,10 +273,11 @@ class AI:
         if family_id == -1 or len(fam.drug_requests) == 0:
             return
 
-        print(f"AI {family_id}")
+        print(f"TURN: AI {family_id}")
         for r in fam.drug_requests:
-            print(r)
-
+            print("REQUEST: ", r)
+        print()
+        
         # Per ora:
         # 1. Una richiesta per turno esaudita
         # 2. Priorità a quelle con days_withinig minore
@@ -296,14 +298,14 @@ class AI:
 
                 self.s.router.send_shipment_safest(
                     fam.capital, r.author,
-                    # Shipment(r.kgs, 80_000, r.author)
                     Shipment(r.kgs, 80_000, fam.id)
                 )
 
                 # fam.drug_requests.remove(r)
                 break            
 
-            
+
+    
         
         
 class Simulator:
@@ -317,9 +319,12 @@ class Simulator:
 
     def update_graph(self):
         for tid, t in Town.TOWNS.items():
+            print(t.__dict__.items())
             nx.set_node_attributes(
                 self.router.graph,
-                {tid: {k:v for k,v in t.__dict__.items() if k not in ["local_family"]}}
+                {tid:
+                 ({k:v for k,v in t.__dict__.items() if k not in ["local_family"]} |
+                  {"family": t.family.id})}   
             )
         
     def save_graph(self, fpath):
@@ -338,22 +343,21 @@ class Simulator:
                 town.advance_turn()
 
             # Every turn follows a random order of execution
-            for family_id in random.shuffle(list(Family.FAMILIES)):
+            for family_id in shuffle(list(Family.FAMILIES)):
                 self.ai_family_turn(family_id)
-
-            # Human player
-            for op in self.player.scheduled_operations:
-                op() #op[0](*op[1:])
-            self.player.scheduled_operations = list()
 
             self.turn += 1
 
         
     def ai_family_turn(self, family_id: FamilyID):
-        # In this turn, every AI chooses what to route in next turn
         if family_id != self.player_id:
             self.ai.decide_shipments(family_id)
             return
+
+        # if human player:
+        for op in self.player.scheduled_operations:
+            op()
+        self.player.scheduled_operations = list()
 
 
     def buy_from_narcos(self, family_id, kgs, immediate=False) -> Union[Tuple[Callable, KG], None]:
@@ -382,6 +386,22 @@ class Simulator:
         Family.get(player_id).change_tax_in(city, amount)
 
         
+    def declare_war_schedule(self, player_id: FamilyID, tid1: TownID, tid2: TownID):
+        t1, t2 = Town.get(tid1), Town.get(tid2)
+
+        if t1.family == t2.family:
+            raise WarError("Can't declare war between two friendly city!")
+        if t2.hold > 0.7:
+            raise WarError("Can't declare war if hold in defender is >0.7!")
+        if t1.family.id != player_id:
+            raise WarError("Can't control non-owned cities!")
+        # TODO: controlla che città siano dirimpettaie 
+
+        t1.family.scheduled_operations.append(
+            Schedule(self.declare_war, In(turn=1),
+                     player_id, tid1, tid2)
+        )
+    
     def declare_war(self, player_id: FamilyID, tid1: TownID, tid2: TownID):
         t1, t2 = Town.get(tid1), Town.get(tid2)
 
@@ -389,9 +409,10 @@ class Simulator:
             raise WarError("Can't declare war between two friendly city!")
         if t2.hold > 0.7:
             raise WarError("Can't declare war if hold in defender is >0.7!")
-        if t1.family != player_id:
+        if t1.family.id != player_id:
             raise WarError("Can't control non-owned cities!")
         # TODO: controlla che città siano dirimpettaie 
+
         
         def defense_factor(t):
             return 2 ** ((t.hold - 0.6) * 10)
@@ -405,7 +426,7 @@ class Simulator:
             print(f"City {t2.id} conquered!")
             
             if t2.is_capital:
-                del Family.FAMILIES[t2.family]
+                del Family.FAMILIES[t2.family.id]
                     
                 towns = [t for t in Town.TOWNS.values() if t.family==t2.family]
 
@@ -414,7 +435,7 @@ class Simulator:
                         continue
                     f = Family(None, "")
                     fam_id = f.id
-                    t.change_family(fam_id)
+                    t.change_family(f)
                     t.change_hold(loss_percent=100)
                     t.is_capital = True
                     f.capital = t.id
@@ -436,6 +457,8 @@ class Simulator:
             t2.hold = 0.7
             t1.hold += 0.08
 
+            t1.family.drugs += t2.drugs
+            
             
         else:
             t1.local_family.variate_leader(-1)
@@ -450,6 +473,7 @@ class Simulator:
             t1.local_family.soldiers = (
                 random.randint(0, t1.local_family.soldiers // 4)
             )
+
             
 # =========================================================== #
 
@@ -471,7 +495,6 @@ def play():
                 sim.save_graph(0)
                 
             if s[0] == "show":
-                # show(sim.router.graph)
                 sim.show_graph()
 
             if s[0] == "drug" and s[1].startswith("p"):
@@ -496,8 +519,7 @@ def play():
                     
             if s[0] == "send": #path
                 from_, to, amount = int(s[1]), int(s[2]), int(s[3])
-                # ship = Shipment(amount, 80_000, to)
-                ship = Shipment(amount, 80_000, Town.get(from_).family)
+                ship = Shipment(amount, 80_000, Town.get(from_).family.id)
                     
                 if sim.router.is_valid_shipment(from_, to, ship):
                     player.scheduled_operations.append(
@@ -519,13 +541,18 @@ def play():
 
             if s[0] == "w":
                 t1, t2 = int(s[1]), int(s[2])
-                sim.declare_war(player_id, t1, t2)
+                sim.declare_war_schedule(player_id, t1, t2)
                 
             if s[0] == "q":
                 break
 
             if s[0] == "d":
                 breakpoint()
+
+            if s[0] == "cp":
+                player_id = int(s[1])
+                # player_id = Family.next(player_id)
+                player = Family.get(player_id)
                 
             if s[0] == "t":
                 t = int(s[1]) if len(s) == 2 else 1

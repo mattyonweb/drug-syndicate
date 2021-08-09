@@ -18,10 +18,10 @@ class TestSafePathGraph(unittest.TestCase):
         g = load_graph("tests/dots/graph_with_all_attributes.dot")
 
         
-        self.assertEqual(Town.get(0).family, 1)
-        self.assertEqual(Town.get(1).family, 0)
-        self.assertEqual(Town.get(2).family, 3)
-        self.assertEqual(Town.get(3).family, 2)
+        self.assertEqual(Town.get(0).family.id, 1)
+        self.assertEqual(Town.get(1).family.id, 0)
+        self.assertEqual(Town.get(2).family.id, 3)
+        self.assertEqual(Town.get(3).family.id, 2)
         
         self.assertAlmostEqual(Town.get(3).hold, 0.6)
         

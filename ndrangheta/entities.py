@@ -42,12 +42,17 @@ class Family():
     @staticmethod
     def get(id: FamilyID):
         return Family.FAMILIES[id]
-        
+
+    @staticmethod
+    def next(id: FamilyID):
+        return (list(Family.FAMILIES).index(id) + 1) % len(Family.FAMILIES)
+
+    
     def stats(self, turn=None):
         if turn is None:
-            print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
+            print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs:.2f}kg ========")
         else:
-            print(f"T{turn} ======== Player {self.id} - {self.money:n}€ - {self.drugs}kg ========")
+            print(f"T{turn} ======== Player {self.id} - {self.money:n}€ - {self.drugs:.2f}kg ========")
         
     def local_asks_for_drug(self, request: Request):
         self.drug_requests.append(request)
@@ -64,7 +69,7 @@ class Family():
         
     def change_tax_in(self, town_id: "TownID", new_tax_rate: float):
         my_assert(
-            Town.get(town_id).family == self.id,
+            Town.get(town_id).family.id == self.id,
             ViolationError("Attempted to change taxes to not owned city")
         )
 
@@ -109,7 +114,7 @@ class LocalFamily:
         self.tax = new_tax
 
     def pay_taxes(self):
-        tax_money = self.tax * self.money
+        tax_money = int(self.tax * self.money)
         self.money -= tax_money
         self.parent.receive_tax(self.town.id, tax_money)
 
@@ -148,13 +153,11 @@ class LocalFamily:
         # sell doses and change town hold. Safe to do both here?
         remaining_days = self.estimate_remaining_days()
 
-        if self.town.family != 0:
+        if self.town.family.id != 0: #BUG: wtf?
             print(self.town.id, end=" ")
             
         if remaining_days > 5:
             sold_kgs = self.estimate_daily_consumption()
-            print("OOOOOOOOK", remaining_days, self.town.drugs,
-                  sold_kgs, self.estimate_daily_consumption())
             
         elif remaining_days > 1:
             self.town.hold = cap(self.town.hold - 0.01, 0.5, 1)
@@ -162,11 +165,8 @@ class LocalFamily:
                 0.5 * (self.avg_daily_regular_dose() + self.avg_daily_saltuar_dose()),
                 self.town.drugs
             )
-            print("WARNING", remaining_days, self.town.drugs, sold_kgs)
             
         else:
-            if self.town.family != 0:
-                print("CRITICAL", remaining_days, self.town.drugs)
             self.town.hold = cap(self.town.hold - 0.05, 0.5, 1)
             sold_kgs = 0
 
@@ -212,6 +212,9 @@ class LocalFamily:
             self.sent_request = True
             
 
+    def estimate_future_hold(self, events: List):
+        pass
+        
     def advance_turn(self):
         self.turn += 1
 
@@ -220,6 +223,7 @@ class LocalFamily:
         for i, task in enumerate(self.futures):
             if isinstance(task.when, Every):
                 if task.when.countdown == 0:
+                    print(task)
                     task()
                     task.when.countdown = task.when.turn
                 else:
@@ -227,6 +231,7 @@ class LocalFamily:
                     
             elif isinstance(task.when, In):
                 if task.when.turn == 0:
+                    print(task)
                     task()
                     done.append(i)
                 else:
@@ -243,17 +248,16 @@ class LocalFamily:
 TownID = int
 
 class Town():
-    # NAMES = open("ndrangheta/calabria.txt", "r").readlines()
     TOWNS: Dict[TownID, "Town"] = dict()
     
-    def __init__(self, town_id: TownID, family_id: FamilyID, **kwargs):        
+    # def __init__(self, town_id: TownID, family_id: FamilyID, **kwargs):        
+    def __init__(self, town_id: TownID, family: Family, **kwargs):        
         assert(town_id not in Town.TOWNS)
         
-        self.id:     TownID   = town_id
-        self.family: FamilyID = family_id
+        self.id:     TownID = town_id
+        self.family: Family = family
         self.is_capital = kwargs["capital"]
         
-        # self.name: str   = Town.NAMES[self.id]
         self.name: str   = ""
         self.hold: float = (
             random.uniform(0.5, 1)
@@ -266,12 +270,12 @@ class Town():
         )
 
         self.local_family = LocalFamily(
-            parent=Family.get(self.family),
+            parent=self.family,
             town=self,
             soldiers=min(kwargs["soldiers"], self.population // 1000),
             leader=kwargs["leader"]
         )
-        self.drugs = kwargs["drugs"] if self.family != -1 else 0 
+        self.drugs = kwargs["drugs"] if self.family.id != -1 else 0 
         
         Town.TOWNS[self.id] = self
 
@@ -283,19 +287,20 @@ class Town():
     
     @staticmethod
     def get_of_family(id: FamilyID):
-        return [t for t in Town.TOWNS.values() if t.family == id]
+        return [t for t in Town.TOWNS.values() if t.family.id == id]
 
 
     def str_stats(self, am_hostile) -> str:
         s = ""
-        s += f"({self.id})\t - Family: {self.family} - Hold: {self.hold:.2f} "
+        s += f"({self.id})\t - Family: {self.family.id} - Hold: {self.hold:.2f} "
 
         if not am_hostile:
             s += f"- Drugs: {self.drugs:.2f}kg "
             s += f"- Taxes: {100*self.local_family.tax:.0f}% "
             s += f"- Army: {self.local_family.soldiers} ({self.local_family.leader}) "
             
-        if self.id == Family.get(self.family).capital:
+        # if self.id == self.family.capital:
+        if self.is_capital:
             s += f"- CAPITAL "
 
         return s
@@ -306,16 +311,17 @@ class Town():
         for tid in Town.TOWNS:
             t = Town.get(tid)
 
-            if exclude_others and t.family != family_id:
+            if exclude_others and t.family.id != family_id:
                 continue
 
-            print(t.str_stats(t.family != family_id))
+            print(t.str_stats(t.family.id != family_id))
 
             
-    def change_family(self, new_family: "FamilyID"):
+    def change_family(self, new_family: Family):
         self.family = new_family
-        self.local_family.parent = Family.FAMILIES[self.family]
-        #TODO: e se prima questa città era una capitale?
+        self.local_family.parent = Family.FAMILIES[self.family.id]
+        if self.is_capital:
+            self.is_capital = False
         #TODO: e se diventa una città indipendente (ie. Fam.FAM[id] non esiste)?
 
         
@@ -341,7 +347,7 @@ class Town():
                                  f" - reason: {reason}")
 
         # TODO: fatto += a destinazione, ma fatto anche -= alla partenza?
-        Family.get(self.family).drugs += amount
+        self.family.drugs += amount
         
         
     def mail_shipment(self, ship: "Shipment"):
@@ -356,7 +362,7 @@ class Town():
         Call this if shipment if transiting through this city.
         Returns the percenteage loss.
         """
-        if self.family != ship.from_family:
+        if self.family.id != ship.from_family:
             # hold = 1    => prob = 1
             # hold = 0.75 => prob = 0.5
             # hold = 0.50 => prob = 0
@@ -386,7 +392,7 @@ class Town():
                            reason="daily drug use")
         
     def advance_turn(self):
-        if self.family == -1:
+        if self.family.id == -1:
             pass # is police town
         else:
             self.consume_drugs_single_day() #TODO perchè qui?!

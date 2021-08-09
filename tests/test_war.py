@@ -19,11 +19,11 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
 
     def test_change_ownership_after_succesfull_fight(self):
         self.s.declare_war(0, 0, 4)
-        self.assertEqual(Town.get(4).family, 0)
+        self.assertEqual(Town.get(4).family.id, 0)
         self.assertEqual(Town.get(4).local_family.parent.id, 0)
 
         self.s.declare_war(0, 0, 6)
-        self.assertEqual(Town.get(6).family, 1)
+        self.assertEqual(Town.get(6).family.id, 1)
 
     
     def test_leader_variation_after_war(self):

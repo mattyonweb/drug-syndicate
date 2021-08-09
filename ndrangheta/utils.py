@@ -1,5 +1,6 @@
 from typing import *
 from random import random
+from random import shuffle as shuffle_1
 from dataclasses import dataclass
 from networkx import draw
 from matplotlib.pyplot import show as show_
@@ -46,6 +47,11 @@ def del_satisfying(l: List, f: Callable):
     Delete elements from list not satisfying a property.
     """
     return [x for x in l if not f(x)]
+
+
+def shuffle(l: List):
+    shuffle_1(l)
+    return l
 
 # =========================================================== #
 

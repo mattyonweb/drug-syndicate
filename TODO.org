@@ -12,29 +12,10 @@ In generale, quando per vie traverse una famiglia locale riesce ad impossessarsi
 ** Inizialmente, se ci sono molte città con droga=0, non ci sarà molta richiesta di droga. Definire il numero di dosi vendute in funzione della "richiesta" di droga nella città, ie. in base a da quanto è presente la mafia in quella città.
 
 
-** Add contracts
-
-- Local family =LF= acknowledges that there is need for drugs, and stipulate a "contract" with the main family =MF=:
-  
-  - =LF= pays 0$ upfront
-  - =LF= will receive 1kg of drugs (hopefully) the next day
-  - =MF= will pretend eg. 60% of the gain, to be received every week 
-    
-- Main family sends 1kg of drug for 1000$ to a local family. 
-- That is delivered to the local family; +the local family will pay in advance, irregardless of what they will actually receive (maybe only when hold is low they will pretend payment at delivery)+
-- After one week, the profit of =LF= will be "taxed" at 60%
-- If =MF= does not deliver within 5 days, the hold of the family in that city will progressively get lower. In the meanwhile, =LF= will sell smaller doses
-  
-
 * Immediate
-
-** Add drug demand from cities
-
-Also: make local families ask main family for drug.
 
 ** Add "happiness" in cities
 Depending on how steadily drugs is delivered, when needed
-
 
 ** Add basic AI
 
@@ -43,3 +24,5 @@ Depending on how steadily drugs is delivered, when needed
 ** Add concrete police
 
 ** Add mafia-wars when hold is low
+*** When conquered, hold in neighbourgh friendly towns is increased exponentially with respect to the distance
+*** Attacks should be scheduled and carried out in the next turn
