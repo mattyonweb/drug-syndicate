@@ -337,7 +337,8 @@ class Simulator:
             for _, town in Town.TOWNS.items():
                 town.advance_turn()
 
-            for family_id in Family.FAMILIES:
+            # Every turn follows a random order of execution
+            for family_id in random.shuffle(list(Family.FAMILIES)):
                 self.ai_family_turn(family_id)
 
             # Human player
@@ -381,13 +382,15 @@ class Simulator:
         Family.get(player_id).change_tax_in(city, amount)
 
         
-    def declare_war(self, tid1: TownID, tid2: TownID):
+    def declare_war(self, player_id: FamilyID, tid1: TownID, tid2: TownID):
         t1, t2 = Town.get(tid1), Town.get(tid2)
 
         if t1.family == t2.family:
             raise WarError("Can't declare war between two friendly city!")
         if t2.hold > 0.7:
-            raise WarError("Can't declare war if hold in defender is >0.7!")        
+            raise WarError("Can't declare war if hold in defender is >0.7!")
+        if t1.family != player_id:
+            raise WarError("Can't control non-owned cities!")
         # TODO: controlla che città siano dirimpettaie 
         
         def defense_factor(t):
@@ -399,6 +402,8 @@ class Simulator:
         print(atk_val, def_val)
         
         if atk_val > def_val:
+            print(f"City {t2.id} conquered!")
+            
             if t2.is_capital:
                 del Family.FAMILIES[t2.family]
                     
@@ -514,7 +519,7 @@ def play():
 
             if s[0] == "w":
                 t1, t2 = int(s[1]), int(s[2])
-                sim.declare_war(t1, t2)
+                sim.declare_war(player_id, t1, t2)
                 
             if s[0] == "q":
                 break

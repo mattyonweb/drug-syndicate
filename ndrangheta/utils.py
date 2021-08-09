@@ -33,7 +33,7 @@ def show(g, show=True, save=False, fpath=None):
         g.nodes()[n]["family"] for n in g.nodes()
     ]
     
-    draw(g, with_labels=True, cmap="Pastel1", node_color=n_colors)
+    draw(g, with_labels=True, cmap="Paired", node_color=n_colors)
 
     if show:
         show_()
