@@ -16,7 +16,6 @@ class TestSafePathGraph(unittest.TestCase):
 
     def test_defined_population_and_hold(self):
         g = load_graph("tests/dots/graph_with_all_attributes.dot")
-
         
         self.assertEqual(Town.get(0).family.id, 1)
         self.assertEqual(Town.get(1).family.id, 0)
@@ -33,6 +32,15 @@ class TestSafePathGraph(unittest.TestCase):
         self.assertEqual(Town.get(2).drugs, 0)
         self.assertEqual(Town.get(3).drugs, 0)
 
+    def test_metanodes(self):
+        g = load_graph("tests/dots/graph_with_all_attributes.dot")
+        
+        self.assertEqual(Family.get(0).money, 1_000_000)
+        self.assertEqual(Family.get(1).money, 0)
+        self.assertEqual(Family.get(2).money, 1_000_000)
+        self.assertEqual(Family.get(3).money, 200_000)
+
+        
     def test_war_attributes(self):
         g = load_graph("tests/dots/war-scenario-1.dot")
 

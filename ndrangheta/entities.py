@@ -21,16 +21,17 @@ FamilyID = int
 class Family():
     FAMILIES: Dict[FamilyID, "Family"] = dict()
 
-    def __init__(self, id: FamilyID, name):
+    def __init__(self, id: FamilyID, name, attrs: Dict[str, Any]):
         if id is None:
             id = max(Family.FAMILIES) + 1
+            
         assert(id not in Family.FAMILIES)
         
         self.name = name
         self.id = id
         self.capital: "TownID" = None
         
-        self.money: int = 1_000_000
+        self.money: int = attrs["money"] #1_000_000
         self.drugs: int = 0
         
         # self.drug_requests: List[Tuple[FamilyID, float]] = list()
@@ -43,6 +44,7 @@ class Family():
     def get(id: FamilyID):
         return Family.FAMILIES[id]
 
+    
     @staticmethod
     def next(id: FamilyID):
         return (list(Family.FAMILIES).index(id) + 1) % len(Family.FAMILIES)
@@ -53,20 +55,13 @@ class Family():
             print(f"======== Player {self.id} - {self.money:n}€ - {self.drugs:.2f}kg ========")
         else:
             print(f"T{turn} ======== Player {self.id} - {self.money:n}€ - {self.drugs:.2f}kg ========")
-        
-    # def local_asks_for_drug(self, request: Request):
-    #     self.drug_requests.append(request)
-        
-    # def cancel_request(self, author: "TownID"):
-    #     self.drug_requests = del_satisfying(
-    #         self.drug_requests,
-    #         lambda r: r.author == author
-    #     )
 
+            
     def receive_tax(self, from_: "TownID", money):
         # TODO: from_ usabile in futuro per AI
         print(f"Family {self.id} receives {money:n}€ from {from_}") 
         self.money += money
+
         
     def change_tax_in(self, town_id: "TownID", new_tax_rate: float):
         my_assert(

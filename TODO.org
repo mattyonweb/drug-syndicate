@@ -1,28 +1,42 @@
 * Da fare domani
+** TODO Moving troops around
+Preparing for war, you need to move your soldiers around. Make it possible to do so.
+*** Don't allow movement on hostile nodes
+Isolated cities will be very difficult to mantain!
+*** What happens if a city is conquered, and in the same turn the (now) former holding family marches to the city?
+A normal battle as usual
 
-** Scrivere test suite per testare gli Schedule()
-
-** BUG: scenario
-- Città X ha fatto richiesta a familgia master per un package entro 5gg
-- Dopo 3gg città X intercetta un pacco di una famiglia nemica
-- Siccome il apcco intercettato è grande, dovresti disdire la richiesta alla famiglia master
-
-In generale, quando per vie traverse una famiglia locale riesce ad impossessarsi di droga, deve ritirare la propria eventuale richiesta pregressa.
-
-** Inizialmente, se ci sono molte città con droga=0, non ci sarà molta richiesta di droga. Definire il numero di dosi vendute in funzione della "richiesta" di droga nella città, ie. in base a da quanto è presente la mafia in quella città.
 
 
 * Immediate
 
+** TODO Add mafia-wars when hold is low
+*** TODO When conquered, hold in neighbourgh friendly towns is increased exponentially with respect to the distance
+*** TODO Attacks should be scheduled and carried out in the next turn
+*** TODO It is possible to attack a city with hold > 0.7, but you lose all your soldiers
+It may happen in this scenario:
+
+- City X has low hold, so Fam(X) schedules in the next turn to move troops to it
+- New turn!
+- Unluckily, City X is conquered by family Y before the X troops arrive
+- Theoretically, when a cityi is conquered hold is raised to 0.7, which make it possible to re-conquer it in the same turn
+- Let's say in the future this 0.7 hold changes, and a city is not attackable anymore; then, FAM(X) soldiers moving to X are all killed.
+
+** DONE Add basic AI
+Greedy: every possible requests from the local families is accepted, according to the priority that local family themselves establish. "Decentralized" AI, in that local families do most of the work
+
+* Not urgent
+** Draw graphs without self-loops
+
+* Future and big
+
 ** Add "happiness" in cities
 Depending on how steadily drugs is delivered, when needed
 
-** Add basic AI
-
-* Future
-
 ** Add concrete police
 
-** Add mafia-wars when hold is low
-*** When conquered, hold in neighbourgh friendly towns is increased exponentially with respect to the distance
-*** Attacks should be scheduled and carried out in the next turn
+
+
+* Maybe never (discarded)
+
+** Inizialmente, se ci sono molte città con droga=0, non ci sarà molta richiesta di droga. Definire il numero di dosi vendute in funzione della "richiesta" di droga nella città, ie. in base a da quanto è presente la mafia in quella città.

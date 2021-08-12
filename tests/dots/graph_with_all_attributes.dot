@@ -1,11 +1,23 @@
+// A map is just a dot graph with some special syntax.
+
 graph G {
 
-  0 -- 1 -- 2 -- 3 -- 4;
+  // Firstly, there is the description of the edges
+  // 0 -- 1 -- 2 -- 3 -- 4;
+  0 -- 1 -- {2 3} -- 4;
 
+  // Then the nodes (ie. the cities)
   2 [label=A0, family=3, capital=t];
   3 [label=A1, family=2, capital=t, hold=0.6];
   0 [label=A2, family=1, pop=50, capital=t];
   1 [label=A3, capital=t, family=0, pop=99, drugs=100];
-
   // Node 4 has no attributes defined, will be assigned to family=0 (player)
+
+  
+  // Here are the "metanodes": they are fictitious nodes that
+  // contain configurations about each family. They are not mandatory.
+  ignore0 [family=0, money=1000000, player=t]
+  ignore1 [family=1, money=0]
+  ignore3 [family=3, money=200000]
+  
 }

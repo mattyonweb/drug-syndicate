@@ -12,8 +12,12 @@ def load_graph(fpath="ndrangheta/example.dot"):
     def convert_labels_to_int(g):
         new_g = nx.Graph()
         for n in g.nodes():
-            new_g.add_node(int(n), **g.nodes()[n])
-            new_g.add_edge(int(n), int(n))
+            if n.isnumeric(): #nodes representing cities
+                new_g.add_node(int(n), **g.nodes()[n])
+                new_g.add_edge(int(n), int(n))
+            else: #metanodes
+                new_g.add_node(n, **g.nodes()[n])
+                
         for (x,y) in g.edges():
             new_g.add_edge(int(x), int(y))
 
@@ -21,6 +25,32 @@ def load_graph(fpath="ndrangheta/example.dot"):
     
     g = convert_labels_to_int(g)
 
+    # =========================================================== #
+
+    def sanitize_metanode(node: Dict) -> Dict:
+        node["money"] = int(node.get("money", 1_000_000))
+        node["family"] = int(node["family"])
+        node["is_player"] = node.get("player", "f") == "t"
+        if "player" in node:
+            del node["player"]
+        return node
+    
+    def extract_metanodes(g) -> Dict:
+        out, to_remove = dict(), list()
+        
+        for n in g.nodes():
+            if isinstance(n, str):
+                d = sanitize_metanode(g.nodes()[n])
+                out[d["family"]] = d
+                to_remove.append(n)
+
+        g.remove_nodes_from(to_remove)
+        return out
+
+    metainfo: Dict["FamilyID", Dict] = extract_metanodes(g)
+
+    # =========================================================== #
+    
     def map_nodes(f, g):
         for name in g.nodes():
             d = f(g.nodes()[name])
@@ -39,32 +69,45 @@ def load_graph(fpath="ndrangheta/example.dot"):
 
     map_nodes(sanitize_dot, g)
 
+    # =========================================================== #
+    
     # TODO
     if Family.FAMILIES != dict() or Town.TOWNS != dict():
         print("Polluted Family/Towns, resetting")
         Family.FAMILIES = dict()
         Town.TOWNS      = dict()
 
-        
+
+    print(metainfo)
+    
     # Crea istanze Town() / Family()
     for n in g.nodes():
-        node = g.nodes()[n]
-        
-        family = node["family"] 
-        if family not in Family.FAMILIES:
-            if family == -1:
-                fam_obj = Police(-1, "Police")
+        node      = g.nodes()[n]
+        family_id = node["family"]
+
+        # Famiglia non già aggiunta 
+        if family_id not in Family.FAMILIES:
+            if family_id not in metainfo:
+                metainfo[family_id] = sanitize_metanode({"family": family_id})
+
+            print(family_id, metainfo[family_id])
+            
+            if family_id == -1:
+                fam_obj = Police(-1, "Police",  metainfo[family_id])
             else:
-                fam_obj = Family(family, str(family))
+                fam_obj = Family(family_id, str(family_id), metainfo[family_id])
+                
         else:
-            fam_obj = Family.get(family)
+            fam_obj = Family.get(family_id)
+
             
         t = Town(n, fam_obj,
                  hold=node["hold"], pop=node["pop"], drugs=node["drugs"],
                  soldiers=node["soldiers"], leader=node["leader"], capital=node["capital"])
         
         if node["capital"]:
-            Family.get(family).capital = n
+            # Family.get(family_id).capital = n
+            fam_obj.capital = n
             
     # Sanity checks:
     for f in Family.FAMILIES.values():
