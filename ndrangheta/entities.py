@@ -19,15 +19,7 @@ class Request:
 FamilyID = int
 
 class Family():
-    # FAMILIES: Dict[FamilyID, "Family"] = dict()
-
-    def __init__(self, id: FamilyID, name, attrs: Dict[str, Any], world: "World"=None):
-        if id is None:
-            raise Exception("Not implemented!")
-            # id = max(Family.FAMILIES) + 1
-
-        # print(id, Family.FAMILIES)
-        # assert(id not in Family.FAMILIES)
+    def __init__(self, id: FamilyID, name, attrs: Dict[str, Any], world: World):
         self.world = world
         
         self.name = name
@@ -38,21 +30,7 @@ class Family():
         self.drugs: int = 0
         
         self.scheduled_operations: List[Tuple] = list()
-
-
-    def set_world(self, world):
-        self.world = world
-
         
-    # @staticmethod
-    # def get(id: FamilyID):
-    #     return Family.FAMILIES[id]
-
-    
-    # @staticmethod
-    # def next(id: FamilyID):
-    #     return (list(Family.FAMILIES).index(id) + 1) % len(Family.FAMILIES)
-
     
     def stats(self, turn=None):
         if turn is None:
@@ -93,7 +71,7 @@ class Family():
     
 class Police(Family):
     def local_asks_for_drug(self, request: Request):
-        print("SHOULND READ ME")
+        raise DrugError("Asked drug to the police!")
 
     
 
@@ -114,7 +92,7 @@ class LocalFamily:
         self.soldiers = soldiers
         self.leader   = leader
         
-        self.sent_request = False
+        # self.sent_request = False
         self.futures = [Schedule(self.pay_taxes, Every(turn=7, countdown=7))]
         self.turn = 0
 
@@ -142,9 +120,6 @@ class LocalFamily:
         #TODO: add randomness on number of self.regulars
         return self.regular_dose * self.regulars * (self.town.population / 1000)
 
-    # def avg_monthly_saltuar_dose(self) -> KG:
-    #     return self.salutar_dose * self.saltuary * (self.town.population / 1000)
-
     def avg_daily_saltuar_dose(self) -> KG:
         return (self.salutar_dose * self.saltuary * (self.town.population / 1000)) / 30
     
@@ -164,9 +139,6 @@ class LocalFamily:
         # TODO: this function does two things simulatneously,
         # sell doses and change town hold. Safe to do both here?
         remaining_days = self.estimate_remaining_days()
-
-        # if self.town.family.id != 0: #BUG: wtf?
-        #     print(self.town.id, end=" ")
             
         if remaining_days > 5:
             sold_kgs = self.estimate_daily_consumption()
@@ -190,9 +162,7 @@ class LocalFamily:
         """
         To be called from Town() when Town() is destination of a shipment.
         """
-        # self.sent_request = False
         self.drug_cost_per_kg = ship.price_per_kg
-        # self.update_family_about_local_drug_situation()
 
         
     def current_drug_situation(self) -> Request:
@@ -208,36 +178,6 @@ class LocalFamily:
     
     def is_drug_situation_critical(self, req: Request):
         return req.needed_before < 5
-
-    
-    # def update_family_about_local_drug_situation(self, req: Request=None):
-    #     """
-    #     If the drug-situation is critical (eg. less than 5 days before running
-    #     out of drugs) informs the main family.
-
-    #     If we were waiting for a package but suddenly we don't need it anymore 
-    #     (eg. because of stolen package) cancel the previous request.
-    #     """
-    #     if req is None:
-    #         req = self.current_drug_situation()
-            
-    #     # If waiting for a package from master family...
-    #     if self.sent_request:
-    #         # ...but somehow (eg. stolen a package from opponent) you
-    #         # dont need it anymore, call it off
-    #         if not self.is_drug_situation_critical(req):
-    #             self.parent.cancel_request(author=self.town.id)
-    #             self.sent_request = False
-
-    #         # TODO: dovresti mettere la condizione: se rem_days < 5:
-    #         # cancella la vecchia richiesta dalla master family,
-    #         # aggiungi nuova richiesta con statistiche aggiornate
-    #         # (quanta te ne serve, entro quanto, ecc)
-    #         return
-        
-    #     if self.is_drug_situation_critical(req):
-    #         self.parent.local_asks_for_drug(req)
-    #         self.sent_request = True
 
     # =========================================================== #
 

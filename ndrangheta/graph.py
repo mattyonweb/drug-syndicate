@@ -4,7 +4,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 from networkx.drawing.nx_pydot import read_dot
-from networkx.algorithms.shortest_paths.generic import shortest_path
+# from networkx.algorithms.shortest_paths.generic import shortest_path
 
 from ndrangheta.config import *
 from ndrangheta.world import World
@@ -53,7 +53,7 @@ class Routing:
         """
         Just a fancy print function for shipment movements.
         """
-        town_name, is_hostile = town.name, town.family.id != my_family
+        is_hostile = town.family.id != my_family
 
         # print(f"shipment_family={my_family}, this family={town.family.id}")
         print(f"In node {town.id} lost {100*(1-loss):.2f}%")
@@ -459,7 +459,7 @@ class Simulator:
                         continue
                     # new_family
                     fam_id = self.world.new_id_for_family()
-                    f = Family(fam_id, str(fam_id), sanitize_metanode({"family": fam_id}))
+                    f = Family(fam_id, str(fam_id), sanitize_metanode({"family": fam_id}), world=self.world)
                     t.change_ownership(f)
                     t.change_hold(loss_percent=100)
                     t.is_capital = True
@@ -503,7 +503,6 @@ class Simulator:
 def play():
     import readline
 
-    # sim = Simulator(load_graph("tests/dots/fun.dot"))
     world, graph = load_graph("ndrangheta/example.dot")
     sim = Simulator(world, graph)
     player_id = 0

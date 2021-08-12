@@ -42,13 +42,6 @@ def show(g, show=True, save=False, fpath=None):
         f.savefig(fpath)
 
 
-def del_satisfying(l: List, f: Callable):
-    """
-    Delete elements from list not satisfying a property.
-    """
-    return [x for x in l if not f(x)]
-
-
 def shuffle(l: List):
     shuffle_1(l)
     return l
