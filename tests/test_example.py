@@ -6,8 +6,8 @@ from ndrangheta.read_dot import load_graph
 
 class TestSafePathGraph(unittest.TestCase):
     def test_base(self):
-        g = load_graph("tests/dots/simple.dot")
-        r = Routing(g)
+        w,g = load_graph("tests/dots/simple.dot")
+        r = Routing(w,g)
 
         
         self.assertEqual(
@@ -35,8 +35,8 @@ class TestSafePathGraph(unittest.TestCase):
 
         
     def test_circle(self):
-        g = load_graph("tests/dots/low_trust_path.dot")
-        r = Routing(g)
+        w,g = load_graph("tests/dots/low_trust_path.dot")
+        r = Routing(w,g)
 
         self.assertEqual(
             r.automatic_path(0, 6, r.safest_path_heuristic),
@@ -44,8 +44,8 @@ class TestSafePathGraph(unittest.TestCase):
         )
 
     def test_inevitable_enemy_family(self):
-        g = load_graph("tests/dots/inevitable_family.dot")
-        r = Routing(g)
+        w,g = load_graph("tests/dots/inevitable_family.dot")
+        r = Routing(w,g)
 
         self.assertEqual(
             r.automatic_path(0, 6, r.safest_path_heuristic),
@@ -56,9 +56,10 @@ class TestSafePathGraph(unittest.TestCase):
 
 class TestSafeShipmentGraph(unittest.TestCase):
     def setUp(self):
-        self.r = Routing(load_graph("tests/dots/inevitable_family.dot"))
-        self.narcos = Narcos()
-        self.family = Family.get(0)
+        self.w, self.g = load_graph("tests/dots/inevitable_family.dot")
+        self.r = Routing(self.w,self.g)
+        self.narcos = Narcos(self.w)
+        self.family = self.w.Family(0)
         
     def test_01_cant_send_drugs_if_no_drug_in_city(self):       
         s = Shipment(kgs=5, retail_price_kg=10_000, author=0)   
@@ -95,13 +96,13 @@ class TestSafeShipmentGraph(unittest.TestCase):
         
         s = Shipment(kgs=2.5, retail_price_kg=10_000, author=0)
         self.r.send_shipment_safest(0, 1, s)
-        self.assertGreater(Town.get(1).drugs, 0)
-        self.assertAlmostEqual(Town.get(0).drugs, 0.5)
+        self.assertGreater(self.w.Town(1).drugs, 0)
+        self.assertAlmostEqual(self.w.Town(0).drugs, 0.5)
 
         # Sends a second tranche of remmaining drugs
         s = Shipment(kgs=0.5, retail_price_kg=10_000, author=0)
         self.r.send_shipment_safest(0, 1, s)
-        self.assertAlmostEqual(Town.get(0).drugs, 0)
+        self.assertAlmostEqual(self.w.Town(0).drugs, 0)
 
     def test_05_cant_send_drugs_to_enemy_family(self):
         try:

@@ -2,7 +2,7 @@ from typing import *
 from dataclasses import dataclass
 
 from ndrangheta.utils import *
-from read_dot import World
+from ndrangheta.world import World
 
 import random
 

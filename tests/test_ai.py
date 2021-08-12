@@ -7,13 +7,13 @@ from ndrangheta.read_dot import load_graph
 
 class TestSafePathGraph(unittest.TestCase):
     def test_base(self):
-        g = load_graph("tests/dots/simple.dot")
-        self.sim = Simulator(g)
+        w, g = load_graph("tests/dots/simple.dot")
+        self.sim = Simulator(w, g)
 
-        proposals_0 = Town.get(2).ai_proposals(),
+        proposals_0 = w.Town(2).ai_proposals(),
 
         for city_id in range(4):
-            reqs = Town.get(city_id).ai_proposals()
+            reqs = w.Town(city_id).ai_proposals()
             
             self.assertIsInstance(reqs, list)
             if len(reqs) > 0:

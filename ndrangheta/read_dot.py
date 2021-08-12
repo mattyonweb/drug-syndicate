@@ -4,37 +4,21 @@ import matplotlib.pyplot as plt
 
 from ndrangheta.config import *
 from ndrangheta.entities import *
+from ndrangheta.world import World
+
 from networkx.drawing.nx_pydot import read_dot
-
-class World:
-    def __init__(self):
-        self.towns = dict()
-        self.families = dict()
-
-    def add_town(self, t: Town):
-        self.towns[t.id] = t
-
-    def add_family(self, f: Family):
-        self.families[f.id] = f
-
-    def Family(self, f_id: FamilyID):
-        return self.families[f_id]
-
-    def Town(self, t_id: TownID):
-        return self.towns[t_id]
-
-    def towns_of_family(self, f_id: FamilyID):
-        return [t for t in self.towns.values() if t.family.id == f_id]
-
-    def print_cities(self, family_id, exclude_others=False):
-        for tid, t in self.towns.items():
-            if exclude_others and t.family.id != family_id:
-                continue
-
-            print(t.str_stats(t.family.id != family_id))
 
 # =========================================================== #
 
+def sanitize_metanode(node: Dict) -> Dict:
+    node["money"] = int(node.get("money", 1_000_000))
+    node["family"] = int(node["family"])
+    node["is_player"] = node.get("player", "f") == "t"
+    if "player" in node:
+        del node["player"]
+    return node
+
+    
 def load_graph(fpath="ndrangheta/example.dot"):
     w = World()
     g = nx.Graph(read_dot(fpath))
@@ -57,14 +41,7 @@ def load_graph(fpath="ndrangheta/example.dot"):
 
     # =========================================================== #
 
-    def sanitize_metanode(node: Dict) -> Dict:
-        node["money"] = int(node.get("money", 1_000_000))
-        node["family"] = int(node["family"])
-        node["is_player"] = node.get("player", "f") == "t"
-        if "player" in node:
-            del node["player"]
-        return node
-    
+
     def extract_metanodes(g) -> Dict:
         out, to_remove = dict(), list()
         
@@ -117,6 +94,7 @@ def load_graph(fpath="ndrangheta/example.dot"):
             if family_id not in metainfo:
                 metainfo[family_id] = sanitize_metanode({"family": family_id})
 
+            print(Family)
             if family_id == -1:
                 fam_obj = Police(-1, "Police",  metainfo[family_id], world=w)
             else:

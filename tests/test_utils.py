@@ -31,58 +31,58 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
 
     
     def test_loss_shipment(self):
-        g = load_graph("tests/dots/forced-path-low.dot")
-        s = Simulator(g)
+        w,g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(w,g)
 
         # Passaggio su città amica e leale
         for _ in range(100):
             ship = self.random_ship(0)
 
             self.assertAlmostEqual(
-                Town.get(0).transit_shipment(ship),
+                w.Town(0).transit_shipment(ship),
                 1,
                 delta=0.01
             )
             
     def test_friendly_but_disloyal_transit(self):
-        g = load_graph("tests/dots/forced-path-low.dot")
-        s = Simulator(g)
+        w,g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(w,g)
         
         # passaggio su città nemica ma poco leale
         for _ in range(100):
             ship = self.random_ship(0)
 
             self.assertAlmostEqual(
-                Town.get(1).transit_shipment(ship),
+                w.Town(1).transit_shipment(ship),
                 1,
                 delta=0.01
             )
             
     def test_hostile_and_loyal_transit(self):
-        g = load_graph("tests/dots/forced-path-low.dot")
-        s = Simulator(g)
+        w,g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(w,g)
         
         # passaggio su città nemica molto leale
         for _ in range(100):
             ship = self.random_ship(1)
 
             self.assertAlmostEqual(
-                Town.get(0).transit_shipment(ship),
+                w.Town(0).transit_shipment(ship),
                 0,
                 delta=0.01
             )
 
     def test_higher_loyalty_means_higher_drugs(self):
-        g = load_graph("tests/dots/forced-path-low.dot")
-        s = Simulator(g)
+        w,g = load_graph("tests/dots/forced-path-low.dot")
+        s = Simulator(w,g)
 
         # In media città (amiche) con hold alto mantengono più droga ad ogni passaggio
         mult_3, mult_4 = 0, 0
         for _ in range(10):
             ship = self.random_ship(0)
 
-            mult_3 += Town.get(3).transit_shipment(ship)
-            mult_4 += Town.get(4).transit_shipment(ship) #hold 4 > hold 3, entrambea miche
+            mult_3 += w.Town(3).transit_shipment(ship)
+            mult_4 += w.Town(4).transit_shipment(ship) #hold 4 > hold 3, entrambea miche
 
         self.assertGreater(mult_4, mult_3)
 
@@ -92,8 +92,8 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         for _ in range(1000):
             ship = self.random_ship(1)
 
-            mult_3 += Town.get(3).transit_shipment(ship)
-            mult_4 += Town.get(4).transit_shipment(ship) #hold 4 > hold 3, entrambea miche
+            mult_3 += w.Town(3).transit_shipment(ship)
+            mult_4 += w.Town(4).transit_shipment(ship) #hold 4 > hold 3, entrambea miche
 
         self.assertGreater(mult_3, mult_4)
         self.assertAlmostEqual(mult_4, 1000/2, delta=50)

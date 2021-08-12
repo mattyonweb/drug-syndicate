@@ -7,8 +7,10 @@ from networkx.drawing.nx_pydot import read_dot
 from networkx.algorithms.shortest_paths.generic import shortest_path
 
 from ndrangheta.config import *
+from ndrangheta.world import World
 from ndrangheta.entities import *
 from ndrangheta.utils import montecarlo, show, Schedule
+from ndrangheta.read_dot import sanitize_metanode
 
 from typing import *
 
@@ -42,9 +44,11 @@ class Shipment:
 
 
 class Routing:
-    def __init__(self, graph):
+    def __init__(self, world: World, graph):
+        self.w     = world
         self.graph = graph
 
+        
     def describe_shipment(self, town: Town, loss: float, my_family: FamilyID):
         """
         Just a fancy print function for shipment movements.
@@ -58,20 +62,20 @@ class Routing:
         print("")
 
 
-    def is_valid_shipment(self, start: TownID, end: TownID, ship: Shipment=None):
-        t1, t2 = Town.get(start), Town.get(end)
+    def is_valid_shipment(self, start: TownID, end: TownID, ship: Shipment=None) -> bool:
+        t1, t2 = self.w.Town(start), self.w.Town(end)
         self.check_is_valid_shipment_geographically(t1, t2)
         self.check_is_valid_shipment_drug_wise(t1, t2, ship)
 
         return True
 
     
-    def check_is_valid_shipment_geographically(self, t1, t2):
+    def check_is_valid_shipment_geographically(self, t1: Town, t2: Town):
         if t1.family != t2.family:
             raise ShipmentError(f"Destination is a place not owned by family {t1.family.id}")
 
         
-    def check_is_valid_shipment_drug_wise(self, t1, _, ship):
+    def check_is_valid_shipment_drug_wise(self, t1: Town, _: Town, ship):
         if t1.drugs < ship.initial_kgs:
             raise ShipmentError(f"Wanted to send {ship.initial_kgs}kg, "
                                 f"but only {t1.drugs} are available in {t1}")
@@ -79,7 +83,7 @@ class Routing:
             raise ShipmentError(f"Zero or below kgs of drugs scheduled ({ship.initial_kgs})")
 
     
-    def move_single(self, start_id: TownID, end_id: TownID, ship: Shipment) -> float:
+    def move_single(self, start_id: TownID, end_id: TownID, ship: Shipment) -> bool:
         """
         Move a package from a city to the other.
         """
@@ -87,10 +91,9 @@ class Routing:
         if end_id not in self.graph.adj[start_id]:
             raise ShipmentError(f"Node {start_id} not adjacent to node {end_id}")
 
-        start, end = Town.get(start_id), Town.get(end_id)
+        start, end = self.w.Town(start_id), self.w.Town(end_id)
 
         remaining_percent = end.transit_shipment(ship)
-        # remaining_percent = start.transit_shipment(ship)
         
         self.describe_shipment(end, remaining_percent, ship.from_family)
         
@@ -114,7 +117,7 @@ class Routing:
         print("*"*12)
         print(f"SHIPMENT: {start} to {end}, {ship.kgs}kg\n")
         
-        town = Town.get(start)
+        town = self.w.Town(start)
         town.mail_shipment(ship)
         
         from_node = path[0]
@@ -125,12 +128,12 @@ class Routing:
             if not ok:
                 print(f"Failed to deliver, package captured in {town_id}! Lost {ship.kgs}kg!")
                 print("*"*12)
-                Town.get(town_id).capture_shipment(ship)
+                self.w.Town(town_id).capture_shipment(ship)
                 return 0
             
             from_node = town_id
 
-        town = Town.get(end)
+        town = self.w.Town(end)
         old_hold = town.hold
         # new_hold = town.change_hold(ship.loss_percent())
 
@@ -150,7 +153,7 @@ class Routing:
     def automatic_path(self, start_id: TownID, end_id: TownID,
                        strategy: Callable[[TownID, TownID, Any], float]) -> List[TownID]:
 
-        start, end = Town.get(start_id), Town.get(end_id)
+        start, end = self.w.Town(start_id), self.w.Town(end_id)
         self.check_is_valid_shipment_geographically(start, end)
             
         return nx.dijkstra_path(
@@ -164,7 +167,7 @@ class Routing:
     
         
     def safest_path_heuristic(self, my_family: FamilyID, _, end_id: TownID, __):
-        t2 = Town.get(end_id)
+        t2 = self.w.Town(end_id)
         
         if t2.family.id != my_family:
             # Safe = evita a tutti i costi, a meno che non sia
@@ -186,7 +189,7 @@ class Routing:
 
     
     def best_expected_path_heuristic(self, my_family, __, t_id2, _):
-        t2 = Town.get(t_id2)
+        t2 = self.w.Town(t_id2)
 
         if t2.family.id != my_family:
             # E[multiplier in A->B] = E[Uniform(hold(B), 1)]
@@ -201,7 +204,7 @@ class Routing:
     def expected_multiplier_path(self, path: List, my_family: FamilyID, strategy: Callable) -> float:
         m = 1
         for tid in path[1:]:
-            t = Town.get(tid)
+            t = self.w.Town(tid)
             if t.family.id != my_family:
                 m *= 2*(1 - t.hold)
             else:
@@ -213,6 +216,9 @@ class Routing:
 class DrugError(Exception): pass
 
 class Narcos():
+    def __init__(self, world: World):
+        self.world = world
+        
     def get_price(self, kgs=1):
         return 60_000 * kgs # 60_000$ = 1Kg
     
@@ -223,7 +229,7 @@ class Narcos():
         Firstly, narcos gets all the money (sell_drugs()); then, at the next turn,
         the family will be delivered the drugs (deliver_drugs()).
         """
-        if Town.get(dest).family.id != family.id:
+        if self.world.Town(dest).family.id != family.id:
             raise ShipmentError("Destination is of a different family!")
         
         money_needed = int(kgs * self.get_price())
@@ -233,11 +239,10 @@ class Narcos():
 
         family.money -= money_needed
 
-        # return (self.deliver_drugs, kgs, family, dest)
         return Schedule(self.deliver_drugs, In(turn=1), kgs, family, dest)
 
     def deliver_drugs(self, kgs, family, dest):
-        Town.get(dest).receive_shipment(Shipment(kgs, 80_000, family))
+        self.world.Town(dest).receive_shipment(Shipment(kgs, 80_000, family))
         
     def sell_drugs_immediately(self, kgs: int, family: Family, dest: TownID):
         return self.sell_drugs(kgs, family, dest)()
@@ -256,11 +261,12 @@ class Ask():
 from ndrangheta.read_dot import load_graph
 
 class AI:
-    def __init__(self, simulator: "Simulator"):
+    def __init__(self, world: World, simulator: "Simulator"):
         self.s = simulator
-
+        self.w = world
+        
     def decide_shipments(self, family_id):
-        fam  = Family.get(family_id)
+        fam  = self.w.Family(family_id)
         reqs = self.sort_ai_cities_proposals(family_id)
         
         if family_id == -1 or len(reqs) == 0:
@@ -293,7 +299,7 @@ class AI:
         """
         Sorts all the proposals of every city of a family.
         """
-        fam = Family.get(family_id)
+        fam = self.w.Family(family_id)
         
         proposals = list()
         for p in fam.gather_requests_from_cities():
@@ -324,16 +330,18 @@ class AI:
 
 
 class Simulator:
-    def __init__(self, graph):
-        self.router = Routing(graph)
-        self.narcos = Narcos()
-        self.player_id, self.player = 0, Family.FAMILIES[0]
+    def __init__(self, world: World, graph):
+        self.world  = world
+        self.router = Routing(world, graph)
+        self.narcos = Narcos(world)
+        
+        self.player_id, self.player = 0, self.world.Family(0)
 
-        self.ai = AI(self)
+        self.ai = AI(self.world, self)
         self.turn = 0
 
     def update_graph(self):
-        for tid, t in Town.TOWNS.items():
+        for tid, t in self.world.towns.items():
             print(t.__dict__.items())
             nx.set_node_attributes(
                 self.router.graph,
@@ -354,11 +362,11 @@ class Simulator:
     
     def advance_time(self, turns=1):
         for _ in range(turns):
-            for _, town in Town.TOWNS.items():
+            for _, town in self.world.towns.items():
                 town.advance_turn()
 
             # Every turn follows a random order of execution
-            for family_id in shuffle(list(Family.FAMILIES)):
+            for family_id in shuffle(list(self.world.families)):
                 self.ai_family_turn(family_id)
 
             self.turn += 1
@@ -376,7 +384,7 @@ class Simulator:
 
 
     def buy_from_narcos(self, family_id, kgs, immediate=False) -> Union[Tuple[Callable, KG], None]:
-        family = Family.get(family_id)
+        family = self.world.Family(family_id)
         dest   = family.capital
 
         if immediate:
@@ -398,11 +406,11 @@ class Simulator:
 
         
     def change_tax(self, player_id: FamilyID, city: TownID, amount: float):
-        Family.get(player_id).change_tax_in(city, amount)
+        self.world.Family(player_id).change_tax_in(city, amount)
 
         
     def declare_war_schedule(self, player_id: FamilyID, tid1: TownID, tid2: TownID):
-        t1, t2 = Town.get(tid1), Town.get(tid2)
+        t1, t2 = self.world.Town(tid1), self.world.Town(tid2)
 
         if t1.family == t2.family:
             raise WarError("Can't declare war between two friendly city!")
@@ -418,7 +426,7 @@ class Simulator:
         )
     
     def declare_war(self, player_id: FamilyID, tid1: TownID, tid2: TownID):
-        t1, t2 = Town.get(tid1), Town.get(tid2)
+        t1, t2 = self.world.Town(tid1), self.world.Town(tid2)
 
         if t1.family == t2.family:
             raise WarError("Can't declare war between two friendly city!")
@@ -441,22 +449,22 @@ class Simulator:
             print(f"City {t2.id} conquered!")
             
             if t2.is_capital:
-                del Family.FAMILIES[t2.family.id]
-                    
-                towns = [t for t in Town.TOWNS.values() if t.family==t2.family]
+                # BUG: cancellazione comporta qualche side effect?
+                del self.world.families[t2.family.id]
+                
+                towns = [t for t in self.world.towns.values() if t.family==t2.family]
 
                 for t in towns:
                     if t == t2:
                         continue
-                    f = Family(None, "")
-                    fam_id = f.id
+                    # new_family
+                    fam_id = self.world.new_id_for_family()
+                    f = Family(fam_id, str(fam_id), sanitize_metanode({"family": fam_id}))
                     t.change_ownership(f)
                     t.change_hold(loss_percent=100)
                     t.is_capital = True
                     f.capital = t.id
                     
-                # raise WarError("Capturing capital not implemented!")
-
             t2.change_ownership(t1.family)
 
             t1.local_family.soldiers = (
@@ -496,9 +504,10 @@ def play():
     import readline
 
     # sim = Simulator(load_graph("tests/dots/fun.dot"))
-    sim = Simulator(load_graph("ndrangheta/example.dot"))
+    world, graph = load_graph("ndrangheta/example.dot")
+    sim = Simulator(world, graph)
     player_id = 0
-    player    = Family.get(player_id)
+    player    = world.Family(player_id)
     
     while True:
         try:
@@ -534,7 +543,7 @@ def play():
                     
             if s[0] == "send": #path
                 from_, to, amount = int(s[1]), int(s[2]), int(s[3])
-                ship = Shipment(amount, 80_000, Town.get(from_).family.id)
+                ship = Shipment(amount, 80_000, world.Town(from_).family.id)
                     
                 if sim.router.is_valid_shipment(from_, to, ship):
                     player.scheduled_operations.append(
@@ -543,7 +552,7 @@ def play():
 
 
             if s[0] == "list":
-                Town.print_cities(player_id)
+                world.print_cities(player_id)
 
             if s[0].startswith("req"):
                 if len(s) == 2:
@@ -567,7 +576,7 @@ def play():
             if s[0] == "cp":
                 player_id = int(s[1])
                 # player_id = Family.next(player_id)
-                player = Family.get(player_id)
+                player = world.Family(player_id)
                 
             if s[0] == "t":
                 t = int(s[1]) if len(s) == 2 else 1
