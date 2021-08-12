@@ -11,27 +11,27 @@ class TestSafePathGraph(unittest.TestCase):
 
         
         self.assertEqual(
-            r.safest_path(7, 4),
+            r.automatic_path(7, 4, r.safest_path_heuristic),
             [7,5,3,6,4]
         )
         
         self.assertEqual(
-            r.safest_path(7, 3),
+            r.automatic_path(7, 3, r.safest_path_heuristic),
             [7,5,3]
         )
 
         self.assertEqual(
-            r.safest_path(0, 1),
+            r.automatic_path(0, 1, r.safest_path_heuristic),
             [0, 1]
         )
                 
         try:
-            r.safest_path(0, 7)
+            r.automatic_path(0, 7, r.safest_path_heuristic)
             self.fail("Different families!")
         except ShipmentError:
             pass
 
-        r.safest_path(0, 0)
+        r.automatic_path(0, 0, r.safest_path_heuristic)
 
         
     def test_circle(self):
@@ -39,7 +39,7 @@ class TestSafePathGraph(unittest.TestCase):
         r = Routing(g)
 
         self.assertEqual(
-            r.safest_path(0, 6),
+            r.automatic_path(0, 6, r.safest_path_heuristic),
             [0,1,2,3,4,5,6]
         )
 
@@ -48,7 +48,7 @@ class TestSafePathGraph(unittest.TestCase):
         r = Routing(g)
 
         self.assertEqual(
-            r.safest_path(0, 6),
+            r.automatic_path(0, 6, r.safest_path_heuristic),
             [0,7,6]
         )
 

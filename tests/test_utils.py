@@ -96,5 +96,5 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
             mult_4 += Town.get(4).transit_shipment(ship) #hold 4 > hold 3, entrambea miche
 
         self.assertGreater(mult_3, mult_4)
-        self.assertAlmostEqual(mult_4, 1000/2, delta=40)
+        self.assertAlmostEqual(mult_4, 1000/2, delta=50)
         

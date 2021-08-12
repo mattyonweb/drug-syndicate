@@ -132,7 +132,7 @@ class Routing:
 
         town = Town.get(end)
         old_hold = town.hold
-        new_hold = town.change_hold(ship.loss_percent())
+        # new_hold = town.change_hold(ship.loss_percent())
 
         town.receive_shipment(ship)  
             
@@ -140,41 +140,39 @@ class Routing:
             f"Arrived at destination ({town.id}) "
             f"with {ship.kgs:.2f}kg, "
             f"lost {ship.loss_absolute():.2f}kg on the way.\n"
-            f"Hold at {town.id} changed from {old_hold:.2f} to {new_hold:.2f}"
-            f"(difference: {new_hold-old_hold:.2f})" 
+            f"Hold at {town.id} changed from {old_hold:.2f} to {town.hold:.2f}"
+            f"(difference: {town.hold-old_hold:.2f})" 
         )
         print("*"*12)
         
         return ship.kgs
 
-    
-    def safest_path(self, start_id: TownID, end_id: TownID):
-        """
-        Safest = only friendly nodes, when impossible enemy's lowest holded nodes.
-        """
+    def automatic_path(self, start_id: TownID, end_id: TownID,
+                       strategy: Callable[[TownID, TownID, Any], float]) -> List[TownID]:
+
         start, end = Town.get(start_id), Town.get(end_id)
         self.check_is_valid_shipment_geographically(start, end)
-
-        my_family = start.family
-        
-        def node_heuristic(__, t_id2, _):
-            t2 = Town.get(t_id2)
-
-            if t2.family != my_family:
-                # Safe = evita a tutti i costi, a meno che non sia
-                # inevitabile, un nodo di una famiglia avversaria
-                v = len(Town.TOWNS) * t2.hold
-            else:
-                v = 1 - t2.hold                
-
-            return v
             
         return nx.dijkstra_path(
             self.graph,
             start_id, end_id,
-            weight=node_heuristic
+            weight=lambda n1, n2, e: strategy(
+                start.family.id,
+                n1, n2, e
+            )
         )
-
+    
+        
+    def safest_path_heuristic(self, my_family: FamilyID, _, end_id: TownID, __):
+        t2 = Town.get(end_id)
+        
+        if t2.family.id != my_family:
+            # Safe = evita a tutti i costi, a meno che non sia
+            # inevitabile, un nodo di una famiglia avversaria
+            return len(Town.TOWNS) * t2.hold
+        
+        return 1 - t2.hold
+    
 
     def send_shipment_safest(self, 
             start: TownID,
@@ -183,38 +181,32 @@ class Routing:
 
         return self.send_shipment_manual(
             start, end, ship,
-            self.safest_path(start, end)
+            self.automatic_path(start, end, self.safest_path_heuristic)
         )
 
     
-    def best_approximate_path(self, start_id, end_id):
-        """
-        Calculates the path with best expected value
-        """
-        start, end = Town.get(start_id), Town.get(end_id)
-        self.check_is_valid_shipment_geographically(start, end)
+    def best_expected_path_heuristic(self, my_family, __, t_id2, _):
+        t2 = Town.get(t_id2)
 
-        my_family = start.family
+        if t2.family.id != my_family:
+            # E[multiplier in A->B] = E[Uniform(hold(B), 1)]
+            # = (1 + hold(B)) / 2
+            return (1 + t2.hold) / 2
         
-        def node_heuristic(__, t_id2, _):
-            t2 = Town.get(t_id2)
+        # hold = 1   => v = 0 => impossible to pass
+        # hold = 0.5 => v = 1 => no risk passing
+        return 2 * (1 - t2.hold)                
 
-            if t2.family != my_family:
-                # E[multiplier in A->B] = E[Uniform(hold(B), 1)]
-                # = (1 + hold(B)) / 2
-                v = (1 + t2.hold) / 2
+    
+    def expected_multiplier_path(self, path: List, my_family: FamilyID, strategy: Callable) -> float:
+        m = 1
+        for tid in path[1:]:
+            t = Town.get(tid)
+            if t.family.id != my_family:
+                m *= 2*(1 - t.hold)
             else:
-                # hold = 1   => v = 0 => impossible to pass
-                # hold = 0.5 => v = 1 => no risk passing
-                v = 2 * (1 - t2.hold)                
-
-            return v
-            
-        return nx.dijkstra_path(
-            self.graph,
-            start_id, end_id,
-            weight=node_heuristic
-        )
+                m *= (1 + t.hold) / 2
+        return m
     
 # =========================================================== #
 
@@ -279,16 +271,58 @@ class AI:
         print()
         
         # Per ora:
-        # 1. Una richiesta per turno esaudita
-        # 2. Priorità a quelle con days_withinig minore
+        # # 1. Una richiesta per turno esaudita
+        # # 2. Priorità a quelle con days_withinig minore
         sorted_reqs = sorted(
             fam.drug_requests,
             key=lambda r: (r.needed_before, -r.kgs)
         )
+
+        # # 1. Raccogli tutte le richieste esaudibili
+        # # 2. Valuta le migliori in termini di hold complessivo
+        # doable = list()
+        # for r in sorted_reqs:
+        #     cost = self.s.ask_drug_price_to_narcos(r.kgs)
+        #     if fam.money > cost:
+        #         doable.append(r)
+
+        # print("DOABLE", doable)
+
+        # if doable == list():
+        #     return
         
-        # Provo tutte le richieste; la prima che posso esaudire, la esaudisco;
-        # do priorità a quelle più urgenti.
-        # Per ora, unica opzione è comprare dai narcos        
+        # evals = list()
+        # strategy = self.s.router.safest_path_heuristic
+        # for r in doable:
+        #     path = self.s.router.automatic_path(
+        #         fam.capital, r.author, strategy
+        #     )
+        #     mult = self.s.router.expected_multiplier_path(
+        #         path, fam.id, strategy
+        #     )
+            
+        #     v = 0
+        #     for t in Town.get_of_family(fam.id):
+        #         if t.id == r.author:
+        #             x = t.evaluate_situation(ship_multiplier=mult)
+        #             print(t.id, x)
+        #         else:
+        #             x = t.evaluate_situation(None)
+        #         v += x
+                
+        #     print(r, v)
+        #     evals.append((r,v))
+
+        # r = sorted(evals, key=lambda t: t[1])[-1][0]
+        # self.s.buy_from_narcos(family_id, r.kgs, immediate=True)
+        # self.s.router.send_shipment_safest(
+        #     fam.capital, r.author,
+        #     Shipment(r.kgs, 80_000, fam.id)
+        # )
+
+        #Provo tutte le richieste; la prima che posso esaudire, la esaudisco;
+        #do priorità a quelle più urgenti.
+        #Per ora, unica opzione è comprare dai narcos        
         for r in sorted_reqs:
             cost = self.s.ask_drug_price_to_narcos(r.kgs)
             
@@ -304,10 +338,35 @@ class AI:
                 # fam.drug_requests.remove(r)
                 break            
 
+            
+    def sort_ai_cities_proposals(self, family_id: FamilyID):
+        fam = Family.get(family_id)
+        proposals = list()
+        for t in Town.get_of_family(family_id):
+            for proposal in t.ai_proposals():
+                proposals.append(
+                    self.__adjust_req_proposal_according_to_distance(fam, proposal)
+                )
+
+        return sorted(proposals, key=lambda x: x.needed_before)
 
     
+    def __adjust_req_proposal_according_to_distance(self, fam: Family, req: Any):
+        if not isinstance(req, Request):
+            return req
         
         
+        path = self.s.router.automatic_path(
+            fam.capital, req.author, self.s.router.safest_path_heuristic
+        )
+        mult = self.s.router.expected_multiplier_path(
+            path, fam.id, self.s.router.safest_path_heuristic
+        )
+        req.kgs *= (2 - mult)
+
+        return req
+
+
 class Simulator:
     def __init__(self, graph):
         self.router = Routing(graph)

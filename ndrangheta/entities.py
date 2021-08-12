@@ -118,13 +118,15 @@ class LocalFamily:
         self.money -= tax_money
         self.parent.receive_tax(self.town.id, tax_money)
 
-
+    # =========================================================== #
+    
     def variate_leader(self, val, override=False):
         if override:
             self.leader = val
         else:
             self.leader += val
 
+    # =========================================================== #
             
     def avg_daily_regular_dose(self) -> KG:
         #TODO: add randomness on number of self.regulars
@@ -153,8 +155,8 @@ class LocalFamily:
         # sell doses and change town hold. Safe to do both here?
         remaining_days = self.estimate_remaining_days()
 
-        if self.town.family.id != 0: #BUG: wtf?
-            print(self.town.id, end=" ")
+        # if self.town.family.id != 0: #BUG: wtf?
+        #     print(self.town.id, end=" ")
             
         if remaining_days > 5:
             sold_kgs = self.estimate_daily_consumption()
@@ -180,17 +182,40 @@ class LocalFamily:
         """
         # self.sent_request = False
         self.drug_cost_per_kg = ship.price_per_kg
-        self.evaluate_need_for_drug()
+        self.update_family_about_local_drug_situation()
 
         
-    def evaluate_need_for_drug(self):        
-        remaining_days = self.estimate_remaining_days()
-        
+    def current_drug_situation(self) -> Request:
+        """
+        Returns the current situation, drug-wise, of the city
+        """
+        return Request(
+            self.estimate_monthly_consumption(),
+            author=self.town.id,
+            needed_before=self.estimate_remaining_days()
+        )
+
+    
+    def is_drug_situation_critical(self, req: Request):
+        return req.needed_before < 5
+
+    
+    def update_family_about_local_drug_situation(self, req: Request=None):
+        """
+        If the drug-situation is critical (eg. less than 5 days before running
+        out of drugs) informs the main family.
+
+        If we were waiting for a package but suddenly we don't need it anymore 
+        (eg. because of stolen package) cancel the previous request.
+        """
+        if req is None:
+            req = self.current_drug_situation()
+            
         # If waiting for a package from master family...
         if self.sent_request:
             # ...but somehow (eg. stolen a package from opponent) you
             # dont need it anymore, call it off
-            if remaining_days >= 5:
+            if not self.is_drug_situation_critical(req):
                 self.parent.cancel_request(author=self.town.id)
                 self.sent_request = False
 
@@ -200,21 +225,12 @@ class LocalFamily:
             # (quanta te ne serve, entro quanto, ecc)
             return
         
-        if remaining_days < 5:
-            self.parent.local_asks_for_drug(
-                Request(
-                    self.estimate_monthly_consumption(),
-                    author=self.town.id,
-                    needed_before=remaining_days
-                )
-            )
-
+        if self.is_drug_situation_critical(req):
+            self.parent.local_asks_for_drug(req)
             self.sent_request = True
-            
 
-    def estimate_future_hold(self, events: List):
-        pass
-        
+    # =========================================================== #
+
     def advance_turn(self):
         self.turn += 1
 
@@ -241,7 +257,7 @@ class LocalFamily:
         for i in done[::-1]:
             del self.futures[i]
               
-        self.evaluate_need_for_drug()
+        self.update_family_about_local_drug_situation()
 
 # =========================================================== #
 
@@ -293,6 +309,7 @@ class Town():
     def str_stats(self, am_hostile) -> str:
         s = ""
         s += f"({self.id})\t - Family: {self.family.id} - Hold: {self.hold:.2f} "
+        s += f" - Pop: {self.population:n} "
 
         if not am_hostile:
             s += f"- Drugs: {self.drugs:.2f}kg "
@@ -325,15 +342,21 @@ class Town():
         #TODO: e se diventa una città indipendente (ie. Fam.FAM[id] non esiste)?
 
         
-    def change_hold(self, loss_percent: float) -> float:
+    def change_hold(self, loss_percent: float, dry_run=False) -> float:
+        """
+        Changes hold after receiving a package.
+        """
         if loss_percent <= 5:
-            self.hold = cap(self.hold * 1.12, 0.5, 1)
+            hold = cap(self.hold * 1.12, 0.5, 1)
         elif loss_percent <= 10:
-            self.hold = cap(self.hold * random.uniform(0.95, 1.05), 0.5, 1)
+            hold = cap(self.hold * random.uniform(0.95, 1.05), 0.5, 1)
         else:
-            self.hold = cap(self.hold * (0.95 - (loss_percent-10)/100), 0.5, 1)
+            hold = cap(self.hold * (0.95 - (loss_percent-10)/100), 0.5, 1)
 
-        return self.hold
+        if not dry_run:
+            self.hold = hold
+            
+        return hold
 
 
     def variate_drugs(self, amount: int, reason:str=""):
@@ -376,20 +399,50 @@ class Town():
  
         
     def receive_shipment(self, ship: "Shipment"):
+        self.change_hold(ship.loss_percent())
         self.variate_drugs(ship.kgs, reason="ship reached destination")        
         self.local_family.receive_shipment(ship)
                                            
 
     def capture_shipment(self, ship: "Shipment"):
         self.variate_drugs(ship.kgs, reason="ship captured!")
-        self.local_family.evaluate_need_for_drug()
+        self.local_family.update_family_about_local_drug_situation()
         # TODO: ci starebbe tipo che aumenta (o diminuisce?) la hold?
 
     # =========================================================== #
     
-    def consume_drugs_single_day(self):
-        self.variate_drugs(- self.local_family.sell_daily_doses(),
+    def estimate_future_hold(self, ship_multiplier=None) -> float:
+        # TODO: tenere conto di possibilità di guerra se hold < 70
+        h = 0
+        if ship_multiplier is not None:
+            h = self.change_hold(100 * (1 - ship_multiplier), dry_run=True) - self.hold
+        if h == 0 and self.hold == 0.5:
+            return -1
+        if h == 0 and self.hold == 1:
+            return 1
+        return h
+
+    def estimate_other_params(self):
+        return cap(
+            (self.local_family.estimate_remaining_days() - 1) / 5,
+            0, 1
+        )
+
+    def evaluate_situation(self, ship_multiplier=None):
+        return (
+            0.8 * self.estimate_future_hold(ship_multiplier) +
+            0.2 * self.estimate_other_params()
+        )
+    
+    # =========================================================== #
+    
+    def consume_drugs_single_day(self) -> float:
+        sold_kgs = self.local_family.sell_daily_doses()
+        self.variate_drugs(- sold_kgs,
                            reason="daily drug use")
+    def ai_proposals(self) -> Union[None, List[Request]]:
+        reqs = [self.local_family.current_drug_situation()]
+        return reqs
         
     def advance_turn(self):
         if self.family.id == -1:
