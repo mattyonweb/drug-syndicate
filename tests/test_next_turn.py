@@ -9,14 +9,6 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
     def setUp(self):
         self.s = Simulator(load_graph("tests/dots/two_nodes.dot"))
         self.family = Family.get(id=0)
-
-    def test_citiyes_do_request_quest_mark(self):
-        self.s.advance_time()
-        
-        self.assertEqual(
-            len(self.family.drug_requests), 1,
-            "\n".join(str(r) for r in self.family.drug_requests)
-        )
         
     def test_basic_ai(self):
         self.s.advance_time()
@@ -25,7 +17,7 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
 
         self.s.advance_time()
 
-        self.assertEqual(len(Family.get(0).drug_requests), 0)
+        # self.assertEqual(len(Family.get(0).drug_requests), 0)
         self.assertGreater(Town.get(1).drugs, 0)
 
     def test_when_stolen_package_city_increase_its_drugs(self):
@@ -83,7 +75,7 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
 
         self.s.advance_time()
 
-        self.assertTrue(any(r.author == 0 for r in Family.get(0).drug_requests))
+        # self.assertTrue(any(r.author == 0 for r in Family.get(0).drug_requests))
 
         self.s.buy_from_narcos(family_id=0, kgs=10, immediate=True)
         self.assertEqual(town.drugs, 10)
@@ -91,9 +83,9 @@ class TestRequestsFromLocalFamilies(unittest.TestCase):
         self.s.advance_time()
 
         # town ha ritirato la richiesta
-        self.assertFalse(
-            any(r.author == 0 for r in Family.get(0).drug_requests)
-        )
+        # self.assertFalse(
+        #     any(r.author == 0 for r in Family.get(0).drug_requests)
+        # )
         
         
 class TestNextStep(unittest.TestCase):

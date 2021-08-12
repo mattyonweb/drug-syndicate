@@ -33,7 +33,7 @@ class Family():
         self.money: int = 1_000_000
         self.drugs: int = 0
         
-        self.drug_requests: List[Tuple[FamilyID, float]] = list()
+        # self.drug_requests: List[Tuple[FamilyID, float]] = list()
         self.scheduled_operations: List[Tuple] = list()
         
         Family.FAMILIES[self.id] = self
@@ -54,17 +54,18 @@ class Family():
         else:
             print(f"T{turn} ======== Player {self.id} - {self.money:n}€ - {self.drugs:.2f}kg ========")
         
-    def local_asks_for_drug(self, request: Request):
-        self.drug_requests.append(request)
+    # def local_asks_for_drug(self, request: Request):
+    #     self.drug_requests.append(request)
         
-    def cancel_request(self, author: "TownID"):
-        self.drug_requests = del_satisfying(
-            self.drug_requests,
-            lambda r: r.author == author
-        )
+    # def cancel_request(self, author: "TownID"):
+    #     self.drug_requests = del_satisfying(
+    #         self.drug_requests,
+    #         lambda r: r.author == author
+    #     )
 
     def receive_tax(self, from_: "TownID", money):
         # TODO: from_ usabile in futuro per AI
+        print(f"Family {self.id} receives {money:n}€ from {from_}") 
         self.money += money
         
     def change_tax_in(self, town_id: "TownID", new_tax_rate: float):
@@ -80,7 +81,17 @@ class Family():
         
         Town.get(town_id).local_family.change_tax_rate(new_tax_rate)
     
-        
+
+    def gather_requests_from_cities(self) -> List[Request]:
+        """ 
+        Collect all the requests from the city of a family.
+        """
+        proposals = list()
+        for t in Town.get_of_family(self.id):
+            proposals += t.ai_proposals()
+        return proposals
+
+    
 class Police(Family):
     def local_asks_for_drug(self, request: Request):
         print("SHOULND READ ME")
@@ -182,7 +193,7 @@ class LocalFamily:
         """
         # self.sent_request = False
         self.drug_cost_per_kg = ship.price_per_kg
-        self.update_family_about_local_drug_situation()
+        # self.update_family_about_local_drug_situation()
 
         
     def current_drug_situation(self) -> Request:
@@ -257,7 +268,7 @@ class LocalFamily:
         for i in done[::-1]:
             del self.futures[i]
               
-        self.update_family_about_local_drug_situation()
+        # self.update_family_about_local_drug_situation()
 
 # =========================================================== #
 
@@ -406,33 +417,8 @@ class Town():
 
     def capture_shipment(self, ship: "Shipment"):
         self.variate_drugs(ship.kgs, reason="ship captured!")
-        self.local_family.update_family_about_local_drug_situation()
+        # self.local_family.update_family_about_local_drug_situation()
         # TODO: ci starebbe tipo che aumenta (o diminuisce?) la hold?
-
-    # =========================================================== #
-    
-    def estimate_future_hold(self, ship_multiplier=None) -> float:
-        # TODO: tenere conto di possibilità di guerra se hold < 70
-        h = 0
-        if ship_multiplier is not None:
-            h = self.change_hold(100 * (1 - ship_multiplier), dry_run=True) - self.hold
-        if h == 0 and self.hold == 0.5:
-            return -1
-        if h == 0 and self.hold == 1:
-            return 1
-        return h
-
-    def estimate_other_params(self):
-        return cap(
-            (self.local_family.estimate_remaining_days() - 1) / 5,
-            0, 1
-        )
-
-    def evaluate_situation(self, ship_multiplier=None):
-        return (
-            0.8 * self.estimate_future_hold(ship_multiplier) +
-            0.2 * self.estimate_other_params()
-        )
     
     # =========================================================== #
     
@@ -440,10 +426,17 @@ class Town():
         sold_kgs = self.local_family.sell_daily_doses()
         self.variate_drugs(- sold_kgs,
                            reason="daily drug use")
+
+
     def ai_proposals(self) -> Union[None, List[Request]]:
-        reqs = [self.local_family.current_drug_situation()]
-        return reqs
+        req = self.local_family.current_drug_situation()
+
+        if not self.local_family.is_drug_situation_critical(req):
+            return []
         
+        return [req]
+
+    
     def advance_turn(self):
         if self.family.id == -1:
             pass # is police town

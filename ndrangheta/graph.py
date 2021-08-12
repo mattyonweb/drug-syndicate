@@ -260,69 +260,22 @@ class AI:
         self.s = simulator
 
     def decide_shipments(self, family_id):
-        fam = Family.get(family_id)
-
-        if family_id == -1 or len(fam.drug_requests) == 0:
+        fam  = Family.get(family_id)
+        reqs = self.sort_ai_cities_proposals(family_id)
+        
+        if family_id == -1 or len(reqs) == 0:
             return
 
         print(f"TURN: AI {family_id}")
-        for r in fam.drug_requests:
-            print("REQUEST: ", r)
-        print()
-        
-        # Per ora:
-        # # 1. Una richiesta per turno esaudita
-        # # 2. Priorità a quelle con days_withinig minore
-        sorted_reqs = sorted(
-            fam.drug_requests,
-            key=lambda r: (r.needed_before, -r.kgs)
-        )
-
-        # # 1. Raccogli tutte le richieste esaudibili
-        # # 2. Valuta le migliori in termini di hold complessivo
-        # doable = list()
-        # for r in sorted_reqs:
-        #     cost = self.s.ask_drug_price_to_narcos(r.kgs)
-        #     if fam.money > cost:
-        #         doable.append(r)
-
-        # print("DOABLE", doable)
-
-        # if doable == list():
-        #     return
-        
-        # evals = list()
-        # strategy = self.s.router.safest_path_heuristic
-        # for r in doable:
-        #     path = self.s.router.automatic_path(
-        #         fam.capital, r.author, strategy
-        #     )
-        #     mult = self.s.router.expected_multiplier_path(
-        #         path, fam.id, strategy
-        #     )
-            
-        #     v = 0
-        #     for t in Town.get_of_family(fam.id):
-        #         if t.id == r.author:
-        #             x = t.evaluate_situation(ship_multiplier=mult)
-        #             print(t.id, x)
-        #         else:
-        #             x = t.evaluate_situation(None)
-        #         v += x
-                
-        #     print(r, v)
-        #     evals.append((r,v))
-
-        # r = sorted(evals, key=lambda t: t[1])[-1][0]
-        # self.s.buy_from_narcos(family_id, r.kgs, immediate=True)
-        # self.s.router.send_shipment_safest(
-        #     fam.capital, r.author,
-        #     Shipment(r.kgs, 80_000, fam.id)
-        # )
-
         #Provo tutte le richieste; la prima che posso esaudire, la esaudisco;
         #do priorità a quelle più urgenti.
-        #Per ora, unica opzione è comprare dai narcos        
+        #Per ora, unica opzione è comprare dai narcos
+        sorted_reqs = reqs
+
+        print("REQUESTS:")
+        for r in sorted_reqs:
+            print("\t", r)
+            
         for r in sorted_reqs:
             cost = self.s.ask_drug_price_to_narcos(r.kgs)
             
@@ -335,26 +288,29 @@ class AI:
                     Shipment(r.kgs, 80_000, fam.id)
                 )
 
-                # fam.drug_requests.remove(r)
-                break            
-
             
     def sort_ai_cities_proposals(self, family_id: FamilyID):
+        """
+        Sorts all the proposals of every city of a family.
+        """
         fam = Family.get(family_id)
+        
         proposals = list()
-        for t in Town.get_of_family(family_id):
-            for proposal in t.ai_proposals():
-                proposals.append(
-                    self.__adjust_req_proposal_according_to_distance(fam, proposal)
-                )
+        for p in fam.gather_requests_from_cities():
+            proposals.append(
+                self.__adjust_req_proposal_according_to_distance(fam, p)
+            )
 
         return sorted(proposals, key=lambda x: x.needed_before)
 
     
     def __adjust_req_proposal_according_to_distance(self, fam: Family, req: Any):
+        """ 
+        Increases the amount on drugs requested by a local family 
+        according to the expected loss on the path of the shipment.
+        """
         if not isinstance(req, Request):
-            return req
-        
+            return req        
         
         path = self.s.router.automatic_path(
             fam.capital, req.author, self.s.router.safest_path_heuristic
@@ -594,8 +550,8 @@ def play():
                     f_id = int(s[1])
                 else:
                     f_id = player.id
-                
-                for r in Family.get(f_id).drug_requests:
+
+                for r in player.gather_requests_from_cities():
                     print(r)
 
             if s[0] == "w":
