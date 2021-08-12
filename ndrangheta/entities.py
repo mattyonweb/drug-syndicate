@@ -19,12 +19,13 @@ class Request:
 FamilyID = int
 
 class Family():
-    FAMILIES: Dict[FamilyID, "Family"] = dict()
+    # FAMILIES: Dict[FamilyID, "Family"] = dict()
 
     def __init__(self, id: FamilyID, name, attrs: Dict[str, Any]):
         if id is None:
             id = max(Family.FAMILIES) + 1
-            
+
+        print(id, Family.FAMILIES)
         assert(id not in Family.FAMILIES)
         
         self.name = name

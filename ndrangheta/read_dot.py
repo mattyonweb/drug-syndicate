@@ -6,7 +6,26 @@ from ndrangheta.config import *
 from ndrangheta.entities import *
 from networkx.drawing.nx_pydot import read_dot
 
+class World:
+    def __init__(self):
+        self.towns = dict()
+        self.families = dict()
+
+    def add_town(self, t: Town):
+        self.towns[t.id] = t
+
+    def add_family(self, f: Family):
+        self.families[f.id] = f
+
+    def family(self, f_id: FamilyID):
+        return self.families[f_id]
+
+    def town(self, t_id: TownID):
+        return self.towns[t_id]
+
+    
 def load_graph(fpath="ndrangheta/example.dot"):
+    w = World()
     g = nx.Graph(read_dot(fpath))
 
     def convert_labels_to_int(g):
@@ -72,13 +91,10 @@ def load_graph(fpath="ndrangheta/example.dot"):
     # =========================================================== #
     
     # TODO
-    if Family.FAMILIES != dict() or Town.TOWNS != dict():
-        print("Polluted Family/Towns, resetting")
-        Family.FAMILIES = dict()
-        Town.TOWNS      = dict()
-
-
-    print(metainfo)
+    # if Family.FAMILIES != dict() or Town.TOWNS != dict():
+    #     print("Polluted Family/Towns, resetting")
+    #     Family.FAMILIES = dict()
+    #     Town.TOWNS      = dict()
     
     # Crea istanze Town() / Family()
     for n in g.nodes():
@@ -86,19 +102,19 @@ def load_graph(fpath="ndrangheta/example.dot"):
         family_id = node["family"]
 
         # Famiglia non già aggiunta 
-        if family_id not in Family.FAMILIES:
+        if family_id not in w.families:
             if family_id not in metainfo:
                 metainfo[family_id] = sanitize_metanode({"family": family_id})
 
-            print(family_id, metainfo[family_id])
-            
             if family_id == -1:
                 fam_obj = Police(-1, "Police",  metainfo[family_id])
             else:
                 fam_obj = Family(family_id, str(family_id), metainfo[family_id])
+
+            w.add_family(fam_obj)
                 
         else:
-            fam_obj = Family.get(family_id)
+            fam_obj = w.family(family_id)
 
             
         t = Town(n, fam_obj,
@@ -106,12 +122,13 @@ def load_graph(fpath="ndrangheta/example.dot"):
                  soldiers=node["soldiers"], leader=node["leader"], capital=node["capital"])
         
         if node["capital"]:
-            # Family.get(family_id).capital = n
             fam_obj.capital = n
-            
+
+        w.add_town(t)
+        
     # Sanity checks:
-    for f in Family.FAMILIES.values():
+    for f in w.families.values():
         if f.capital is None:
             raise Exception(f"Family {f.id} has no capital!")
         
-    return g
+    return (w, g)
