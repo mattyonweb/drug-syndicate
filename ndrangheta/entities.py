@@ -1,8 +1,8 @@
 from typing import *
 from dataclasses import dataclass
 
-# from ndrangheta.utils import cap, montecarlo, Schedule, When, In, Every
 from ndrangheta.utils import *
+from read_dot import World
 
 import random
 
@@ -21,12 +21,14 @@ FamilyID = int
 class Family():
     # FAMILIES: Dict[FamilyID, "Family"] = dict()
 
-    def __init__(self, id: FamilyID, name, attrs: Dict[str, Any]):
+    def __init__(self, id: FamilyID, name, attrs: Dict[str, Any], world: "World"=None):
         if id is None:
-            id = max(Family.FAMILIES) + 1
+            raise Exception("Not implemented!")
+            # id = max(Family.FAMILIES) + 1
 
-        print(id, Family.FAMILIES)
-        assert(id not in Family.FAMILIES)
+        # print(id, Family.FAMILIES)
+        # assert(id not in Family.FAMILIES)
+        self.world = world
         
         self.name = name
         self.id = id
@@ -35,20 +37,21 @@ class Family():
         self.money: int = attrs["money"] #1_000_000
         self.drugs: int = 0
         
-        # self.drug_requests: List[Tuple[FamilyID, float]] = list()
         self.scheduled_operations: List[Tuple] = list()
-        
-        Family.FAMILIES[self.id] = self
+
+
+    def set_world(self, world):
+        self.world = world
 
         
-    @staticmethod
-    def get(id: FamilyID):
-        return Family.FAMILIES[id]
+    # @staticmethod
+    # def get(id: FamilyID):
+    #     return Family.FAMILIES[id]
 
     
-    @staticmethod
-    def next(id: FamilyID):
-        return (list(Family.FAMILIES).index(id) + 1) % len(Family.FAMILIES)
+    # @staticmethod
+    # def next(id: FamilyID):
+    #     return (list(Family.FAMILIES).index(id) + 1) % len(Family.FAMILIES)
 
     
     def stats(self, turn=None):
@@ -66,7 +69,7 @@ class Family():
         
     def change_tax_in(self, town_id: "TownID", new_tax_rate: float):
         my_assert(
-            Town.get(town_id).family.id == self.id,
+            self.world.Town(town_id).family.id == self.id,
             ViolationError("Attempted to change taxes to not owned city")
         )
 
@@ -75,7 +78,7 @@ class Family():
             ValueError__("Tax rate not between 0.0 and 1.0 (or 0 and 100%)")
         )
         
-        Town.get(town_id).local_family.change_tax_rate(new_tax_rate)
+        self.world.Town(town_id).local_family.change_tax_rate(new_tax_rate)
     
 
     def gather_requests_from_cities(self) -> List[Request]:
@@ -83,7 +86,7 @@ class Family():
         Collect all the requests from the city of a family.
         """
         proposals = list()
-        for t in Town.get_of_family(self.id):
+        for t in self.world.towns_of_family(self.id):
             proposals += t.ai_proposals()
         return proposals
 
@@ -207,34 +210,34 @@ class LocalFamily:
         return req.needed_before < 5
 
     
-    def update_family_about_local_drug_situation(self, req: Request=None):
-        """
-        If the drug-situation is critical (eg. less than 5 days before running
-        out of drugs) informs the main family.
+    # def update_family_about_local_drug_situation(self, req: Request=None):
+    #     """
+    #     If the drug-situation is critical (eg. less than 5 days before running
+    #     out of drugs) informs the main family.
 
-        If we were waiting for a package but suddenly we don't need it anymore 
-        (eg. because of stolen package) cancel the previous request.
-        """
-        if req is None:
-            req = self.current_drug_situation()
+    #     If we were waiting for a package but suddenly we don't need it anymore 
+    #     (eg. because of stolen package) cancel the previous request.
+    #     """
+    #     if req is None:
+    #         req = self.current_drug_situation()
             
-        # If waiting for a package from master family...
-        if self.sent_request:
-            # ...but somehow (eg. stolen a package from opponent) you
-            # dont need it anymore, call it off
-            if not self.is_drug_situation_critical(req):
-                self.parent.cancel_request(author=self.town.id)
-                self.sent_request = False
+    #     # If waiting for a package from master family...
+    #     if self.sent_request:
+    #         # ...but somehow (eg. stolen a package from opponent) you
+    #         # dont need it anymore, call it off
+    #         if not self.is_drug_situation_critical(req):
+    #             self.parent.cancel_request(author=self.town.id)
+    #             self.sent_request = False
 
-            # TODO: dovresti mettere la condizione: se rem_days < 5:
-            # cancella la vecchia richiesta dalla master family,
-            # aggiungi nuova richiesta con statistiche aggiornate
-            # (quanta te ne serve, entro quanto, ecc)
-            return
+    #         # TODO: dovresti mettere la condizione: se rem_days < 5:
+    #         # cancella la vecchia richiesta dalla master family,
+    #         # aggiungi nuova richiesta con statistiche aggiornate
+    #         # (quanta te ne serve, entro quanto, ecc)
+    #         return
         
-        if self.is_drug_situation_critical(req):
-            self.parent.local_asks_for_drug(req)
-            self.sent_request = True
+    #     if self.is_drug_situation_critical(req):
+    #         self.parent.local_asks_for_drug(req)
+    #         self.sent_request = True
 
     # =========================================================== #
 
@@ -273,9 +276,9 @@ TownID = int
 class Town():
     TOWNS: Dict[TownID, "Town"] = dict()
     
-    # def __init__(self, town_id: TownID, family_id: FamilyID, **kwargs):        
-    def __init__(self, town_id: TownID, family: Family, **kwargs):        
-        assert(town_id not in Town.TOWNS)
+    def __init__(self, town_id: TownID, family: Family, world=None, **kwargs):        
+        # assert(town_id not in Town.TOWNS)
+        self.world = world
         
         self.id:     TownID = town_id
         self.family: Family = family
@@ -303,17 +306,17 @@ class Town():
         Town.TOWNS[self.id] = self
 
         
-    @staticmethod
-    def get(id: TownID):
-        return Town.TOWNS[id]
+    # @staticmethod
+    # def get(id: TownID):
+    #     return Town.TOWNS[id]
 
     
-    @staticmethod
-    def get_of_family(id: FamilyID):
-        return [t for t in Town.TOWNS.values() if t.family.id == id]
+    # @staticmethod
+    # def get_of_family(id: FamilyID):
+    #     return [t for t in Town.TOWNS.values() if t.family.id == id]
 
 
-    def str_stats(self, am_hostile) -> str:
+    def str_stats(self, am_hostile: bool) -> str:
         s = ""
         s += f"({self.id})\t - Family: {self.family.id} - Hold: {self.hold:.2f} "
         s += f" - Pop: {self.population:n} "
@@ -330,20 +333,20 @@ class Town():
         return s
 
     
-    @staticmethod
-    def print_cities(family_id, exclude_others=False):
-        for tid in Town.TOWNS:
-            t = Town.get(tid)
+    # @staticmethod
+    # def print_cities(family_id, exclude_others=False):
+    #     for tid in Town.TOWNS:
+    #         t = Town.get(tid)
 
-            if exclude_others and t.family.id != family_id:
-                continue
+    #         if exclude_others and t.family.id != family_id:
+    #             continue
 
-            print(t.str_stats(t.family.id != family_id))
+    #         print(t.str_stats(t.family.id != family_id))
 
             
-    def change_family(self, new_family: Family):
+    def change_ownership(self, new_family: Family):
         self.family = new_family
-        self.local_family.parent = Family.FAMILIES[self.family.id]
+        self.local_family.parent = self.family
         if self.is_capital:
             self.is_capital = False
         #TODO: e se diventa una città indipendente (ie. Fam.FAM[id] non esiste)?

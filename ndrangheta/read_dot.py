@@ -17,13 +17,24 @@ class World:
     def add_family(self, f: Family):
         self.families[f.id] = f
 
-    def family(self, f_id: FamilyID):
+    def Family(self, f_id: FamilyID):
         return self.families[f_id]
 
-    def town(self, t_id: TownID):
+    def Town(self, t_id: TownID):
         return self.towns[t_id]
 
-    
+    def towns_of_family(self, f_id: FamilyID):
+        return [t for t in self.towns.values() if t.family.id == f_id]
+
+    def print_cities(self, family_id, exclude_others=False):
+        for tid, t in self.towns.items():
+            if exclude_others and t.family.id != family_id:
+                continue
+
+            print(t.str_stats(t.family.id != family_id))
+
+# =========================================================== #
+
 def load_graph(fpath="ndrangheta/example.dot"):
     w = World()
     g = nx.Graph(read_dot(fpath))
@@ -107,17 +118,17 @@ def load_graph(fpath="ndrangheta/example.dot"):
                 metainfo[family_id] = sanitize_metanode({"family": family_id})
 
             if family_id == -1:
-                fam_obj = Police(-1, "Police",  metainfo[family_id])
+                fam_obj = Police(-1, "Police",  metainfo[family_id], world=w)
             else:
-                fam_obj = Family(family_id, str(family_id), metainfo[family_id])
+                fam_obj = Family(family_id, str(family_id), metainfo[family_id], world=w)
 
             w.add_family(fam_obj)
                 
         else:
-            fam_obj = w.family(family_id)
+            fam_obj = w.Family(family_id)
 
             
-        t = Town(n, fam_obj,
+        t = Town(n, fam_obj, world=w,
                  hold=node["hold"], pop=node["pop"], drugs=node["drugs"],
                  soldiers=node["soldiers"], leader=node["leader"], capital=node["capital"])
         

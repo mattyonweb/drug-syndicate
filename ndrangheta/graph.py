@@ -450,14 +450,14 @@ class Simulator:
                         continue
                     f = Family(None, "")
                     fam_id = f.id
-                    t.change_family(f)
+                    t.change_ownership(f)
                     t.change_hold(loss_percent=100)
                     t.is_capital = True
                     f.capital = t.id
                     
                 # raise WarError("Capturing capital not implemented!")
 
-            t2.change_family(t1.family)
+            t2.change_ownership(t1.family)
 
             t1.local_family.soldiers = (
                 round((atk_val - def_val) / t1.local_family.leader)
